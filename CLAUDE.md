@@ -2,12 +2,12 @@
 
 Personal budgeting app: expenses, incomes and savings grouped into monthly **cycles**, with budgets and
 recurrent entries that the backend copies into each new cycle. This repo is a native rewrite of the Expo
-app, feature-complete and **online-only** (no local cache, by decision; offline may come later).
+app, feature-complete online. Offline support is being built (see "Offline plan" below).
 
 Related repos (siblings in `~/projects`):
 - `expenses-tracker` — FastAPI backend this app talks to (has its own CLAUDE.md).
-- `expenses-tracker-app` — the original Expo/React Native app. Reference for behaviour and Spanish copy; not
-  developed further.
+- `expenses-tracker-app` — the original Expo/React Native app. Retired (no longer used); reference only for
+  behaviour and Spanish copy. API changes don't need to stay compatible with it.
 
 Follow-ups (backend quirks, UI ideas, open items) are tracked in a Claude Doc:
 https://claude.ai/code/artifact/e725ea4c-d2ad-4546-96eb-20acb2935e62
@@ -83,6 +83,25 @@ tabs by state and forms are dialogs.
 - `AuthRepository.credentials()` throws `IOException` when a refresh fails for lack of network (session kept)
   and marks the user signed out otherwise; `AppRoot` then shows login.
 
+## Offline plan (decided 2026-09-26, in progress)
+
+- First launch asks: log in (online + local copy, synced) or use fully offline. Build the online path first.
+- Local-first: Room is the source of truth for screens; writes go to Room plus a pending-changes queue;
+  WorkManager syncs when connected (push queue, pull changes, merge). DataStore for mode and sync state.
+- Backend "option B": every synced record has a client-generated UUID, a server `sync_version`, soft deletes
+  (`deleted_at`); `GET /sync` (pull since a cursor) and `POST /sync` (batch push). Conflicts: last write wins,
+  delete wins. Cycles are identified by (user, month); recurrent copies link to their source recurrent entry
+  so copies made on the phone and on the server merge instead of duplicating.
+- Other writers: the email script (not running yet) will write to the API too, so the server stays a real
+  sync peer. The Expo app is retired.
+- Offline-only data must be uploadable later when the user creates an account (a normal sync push).
+- Keep the last 6 cycles of expenses/incomes/budgets locally (to be reviewed); older cycles load on demand
+  when online. Keep **all** savings locally: "Totalizado" sums every saving ever recorded.
+- Order: (1) backend Alembic + sync columns/data migration, (2) backend `/sync`, (3) Room + repositories,
+  (4) queue + WorkManager sync + 6-month window, (5) offline-only mode + upload on account creation.
+- Summaries (cycle status, budget totals, "Sin ppto.", grouped savings) must be computed locally, matching
+  the backend queries.
+
 ## History (see `git log` for details)
 
 2026-09-25/26: scaffold + Auth0 login → networking layer → app shell → Expenses → Incomes and Savings →
@@ -92,5 +111,5 @@ Backend fixes made along the way live in `expenses-tracker`.
 
 Open: saving withdrawals UI (`POST /savings/saving-outcome` exists in `SavingsApi`);
 tapping a Resumen card to see its movements; a 401 from the API shows an error instead of sending the user
-to login; offline cache (deferred); internationalization (user wants it later: UI strings are hard-coded
+to login; internationalization (user wants it later: UI strings are hard-coded
 Spanish in Kotlin, and money/dates are fixed to COP/es-CO in `ui/format/Formatters.kt`).

@@ -10,14 +10,13 @@ import com.jldev.expensestracker.android.data.remote.model.Expense
 import com.jldev.expensestracker.android.data.remote.model.ExpenseCreate
 import com.jldev.expensestracker.android.data.remote.model.ExpenseUpdate
 import com.jldev.expensestracker.android.ui.UserMessages
-import com.jldev.expensestracker.android.ui.common.EntryListViewModel
+import com.jldev.expensestracker.android.ui.common.CycleEntryListViewModel
 import com.jldev.expensestracker.android.ui.common.runReporting
 import com.jldev.expensestracker.android.ui.components.EntryValues
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -36,9 +35,9 @@ data class ExpenseFilters(
 class ExpensesViewModel @Inject constructor(
     private val expensesApi: ExpensesApi,
     private val budgetsApi: BudgetsApi,
-    private val cycleRepository: CycleRepository,
+    cycleRepository: CycleRepository,
     userMessages: UserMessages,
-) : EntryListViewModel<Expense>(userMessages, "Error al obtener los gastos") {
+) : CycleEntryListViewModel<Expense>(cycleRepository, userMessages, "Error al obtener los gastos") {
 
     private val budgets = MutableStateFlow<List<Budget>>(emptyList())
     private val budgetFilter = MutableStateFlow<Int?>(null)
@@ -52,14 +51,13 @@ class ExpensesViewModel @Inject constructor(
     ).stateIn(viewModelScope, SharingStarted.Eagerly, ExpenseFilters())
 
     init {
-        viewModelScope.launch {
-            // Emits the current cycle first, which does the initial load.
-            cycleRepository.selectedCycleId.collectLatest {
-                budgetFilter.value = null
-                refresh()
-                loadBudgets()
-            }
-        }
+        start()
+    }
+
+    override suspend fun onCycleChanged() {
+        budgetFilter.value = null
+        refresh()
+        loadBudgets()
     }
 
     override suspend fun fetchPage(skip: Int, limit: Int): List<Expense> =
@@ -68,12 +66,7 @@ class ExpensesViewModel @Inject constructor(
     override fun onChanged() {
         super.onChanged()
         viewModelScope.launch { loadBudgets() }
-        viewModelScope.launch {
-            userMessages.runReporting("Error al obtener el estado del ciclo") { cycleRepository.refreshStatus() }
-        }
     }
-
-    fun selectCycle(cycleId: Int) = cycleRepository.select(cycleId)
 
     fun filterByBudget(budgetId: Int?) {
         budgetFilter.value = budgetId

@@ -3,9 +3,7 @@ package com.jldev.expensestracker.android.ui.expenses
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -15,12 +13,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.jldev.expensestracker.android.R
 import com.jldev.expensestracker.android.data.remote.model.Budget
 import com.jldev.expensestracker.android.data.remote.model.Expense
 import com.jldev.expensestracker.android.ui.common.EditorState
@@ -32,6 +28,7 @@ import com.jldev.expensestracker.android.ui.components.EntryFormDialog
 import com.jldev.expensestracker.android.ui.components.EntryListScreen
 import com.jldev.expensestracker.android.ui.components.EntryValues
 import com.jldev.expensestracker.android.ui.components.LabeledSwitch
+import com.jldev.expensestracker.android.ui.components.RecurrentMarker
 import com.jldev.expensestracker.android.ui.format.formatDate
 import com.jldev.expensestracker.android.ui.theme.DodgerBlue
 import com.jldev.expensestracker.android.ui.theme.PersianRed
@@ -93,16 +90,7 @@ private fun ExpenseCard(expense: Expense, onClick: () -> Unit) {
         description = expense.description,
         amount = expense.valExpense,
         onClick = onClick,
-        middle = {
-            if (expense.isRecurrentExpense) {
-                Icon(
-                    painterResource(R.drawable.ic_repeat),
-                    contentDescription = "Gasto recurrente",
-                    tint = DodgerBlue.c300,
-                    modifier = Modifier.size(20.dp),
-                )
-            }
-        },
+        middle = { if (expense.isRecurrentExpense) RecurrentMarker("Gasto recurrente") },
     ) {
         Text(
             expense.budget?.description ?: "Sin presupuesto",

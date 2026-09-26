@@ -1,0 +1,15 @@
+# Copy to local.properties (git-ignored) and fill in. Android Studio sets sdk.dir automatically.
+sdk.dir=/home/you/Android/Sdk
+
+# Shared
+auth0.audience=https://api.expenses-tracker.com
+
+# debug build (applicationId suffix .dev)
+dev.apiUrl=http://192.168.0.218:8000
+dev.auth0.domain=
+dev.auth0.clientId=
+
+# release build
+release.apiUrl=
+release.auth0.domain=
+release.auth0.clientId=

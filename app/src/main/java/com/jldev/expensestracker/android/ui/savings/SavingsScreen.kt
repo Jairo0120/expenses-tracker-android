@@ -7,7 +7,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.text.font.FontWeight
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.jldev.expensestracker.android.data.remote.model.Saving
+import com.jldev.expensestracker.android.data.model.SavingItem
 import com.jldev.expensestracker.android.ui.components.CycleHeader
 import com.jldev.expensestracker.android.ui.components.EntryCard
 import com.jldev.expensestracker.android.ui.components.EntryListScreen
@@ -22,18 +22,18 @@ fun SavingsScreen(viewModel: SavingsViewModel = hiltViewModel()) {
     EntryListScreen(
         state = uiState.list,
         onRefresh = viewModel::refresh,
-        onLoadMore = viewModel::loadMore,
         onAdd = viewModel::openNew,
         addDescription = "Nuevo ahorro",
         emptyText = "No hay ahorros qué mostrar",
         endText = "No hay más ahorros qué mostrar",
-        key = Saving::id,
+        key = { it.saving.uuid },
         header = { CycleHeader(viewModel) },
-    ) { saving ->
+    ) { item ->
+        val saving = item.saving
         EntryCard(
-            description = saving.savingType.description,
+            description = item.savingTypeDescription,
             amount = saving.valSaving,
-            onClick = { viewModel.openEdit(saving) },
+            onClick = { viewModel.openEdit(item) },
             middle = { if (saving.isRecurrentSaving) RecurrentMarker("Ahorro recurrente") },
         ) {
             if (saving.isRecurrentSaving) {

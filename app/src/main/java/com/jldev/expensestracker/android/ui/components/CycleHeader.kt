@@ -12,10 +12,10 @@ import com.jldev.expensestracker.android.ui.common.CycleEntryListViewModel
 @Composable
 fun CycleHeader(viewModel: CycleEntryListViewModel<*>) {
     val cycles by viewModel.cycles.collectAsStateWithLifecycle()
-    val selectedCycleId by viewModel.selectedCycleId.collectAsStateWithLifecycle()
+    val currentCycle by viewModel.currentCycle.collectAsStateWithLifecycle()
     CyclePicker(
         cycles = cycles,
-        selectedCycleId = selectedCycleId,
+        selectedCycleUuid = currentCycle?.uuid,
         onSelect = viewModel::selectCycle,
         modifier = Modifier.padding(horizontal = 12.dp),
     )

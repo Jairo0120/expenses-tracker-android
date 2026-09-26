@@ -1,27 +1,23 @@
 package com.jldev.expensestracker.android.ui.budgets
 
-import com.jldev.expensestracker.android.data.remote.api.BudgetsApi
-import com.jldev.expensestracker.android.data.remote.model.RecurrentBudget
-import com.jldev.expensestracker.android.data.remote.model.RecurrentBudgetCreate
-import com.jldev.expensestracker.android.data.remote.model.RecurrentBudgetUpdate
+import com.jldev.expensestracker.android.data.BudgetsRepository
+import com.jldev.expensestracker.android.data.local.RecurrentBudgetEntity
+import com.jldev.expensestracker.android.data.sync.SyncRepository
 import com.jldev.expensestracker.android.ui.UserMessages
 import com.jldev.expensestracker.android.ui.common.EntryListViewModel
 import com.jldev.expensestracker.android.ui.components.EntryValues
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 
-/** The "Presupuestos" tab: budget templates the backend copies into each new cycle. */
+/** The "Presupuestos" tab: budget templates copied into each new cycle (and into the current one). */
 @HiltViewModel
 class RecurrentBudgetsViewModel @Inject constructor(
-    private val budgetsApi: BudgetsApi,
+    private val budgetsRepository: BudgetsRepository,
+    syncRepository: SyncRepository,
     userMessages: UserMessages,
-) : EntryListViewModel<RecurrentBudget>(userMessages, "Error al obtener los presupuestos") {
+) : EntryListViewModel<RecurrentBudgetEntity>(syncRepository, userMessages) {
 
-    init {
-        refresh()
-    }
-
-    override suspend fun fetchPage(skip: Int, limit: Int) = budgetsApi.listRecurrent(skip, limit)
+    override fun items() = budgetsRepository.recurrentBudgets()
 
     fun save(values: EntryValues, createAnother: Boolean) {
         val isNew = uiState.value.editor?.item == null
@@ -31,14 +27,14 @@ class RecurrentBudgetsViewModel @Inject constructor(
             createAnother = createAnother,
         ) { item ->
             if (item == null) {
-                budgetsApi.createRecurrent(RecurrentBudgetCreate(values.description, values.amount))
+                budgetsRepository.createRecurrent(values.description, values.amount)
             } else {
-                budgetsApi.updateRecurrent(item.id, RecurrentBudgetUpdate(values.description, values.amount))
+                budgetsRepository.updateRecurrent(item, values.description, values.amount)
             }
         }
     }
 
     fun delete() = submit("Presupuesto eliminado", "No se pudo eliminar el presupuesto") { item ->
-        budgetsApi.deleteRecurrent(checkNotNull(item).id)
+        budgetsRepository.deleteRecurrent(checkNotNull(item))
     }
 }

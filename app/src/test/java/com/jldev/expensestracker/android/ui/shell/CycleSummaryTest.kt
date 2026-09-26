@@ -1,6 +1,6 @@
 package com.jldev.expensestracker.android.ui.shell
 
-import com.jldev.expensestracker.android.data.remote.model.CycleStatus
+import com.jldev.expensestracker.android.data.model.CycleStatus
 import org.junit.Assert.assertEquals
 import org.junit.Test
 

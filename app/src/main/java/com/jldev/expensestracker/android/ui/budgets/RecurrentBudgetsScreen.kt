@@ -7,7 +7,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.jldev.expensestracker.android.data.remote.model.RecurrentBudget
+import com.jldev.expensestracker.android.data.local.RecurrentBudgetEntity
 import com.jldev.expensestracker.android.ui.components.EntryCard
 import com.jldev.expensestracker.android.ui.components.EntryForm
 import com.jldev.expensestracker.android.ui.components.EntryFormDialog
@@ -22,12 +22,11 @@ fun RecurrentBudgetsScreen(viewModel: RecurrentBudgetsViewModel = hiltViewModel(
     EntryListScreen(
         state = uiState.list,
         onRefresh = viewModel::refresh,
-        onLoadMore = viewModel::loadMore,
         onAdd = viewModel::openNew,
         addDescription = "Nuevo presupuesto",
         emptyText = "No hay presupuestos qué mostrar",
         endText = "No hay más presupuestos qué mostrar",
-        key = RecurrentBudget::id,
+        key = RecurrentBudgetEntity::uuid,
     ) { item ->
         EntryCard(item.description, item.valBudget, onClick = { viewModel.openEdit(item) }) {
             Text(formatDate(item.createdAt), style = MaterialTheme.typography.labelSmall, color = DodgerBlue.c500)

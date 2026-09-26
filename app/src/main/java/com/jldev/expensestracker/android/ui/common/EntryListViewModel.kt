@@ -2,11 +2,15 @@ package com.jldev.expensestracker.android.ui.common
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.jldev.expensestracker.android.data.sync.SyncRepository
 import com.jldev.expensestracker.android.ui.UserMessages
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -17,42 +21,53 @@ import kotlinx.coroutines.launch
  */
 data class EditorState<T>(val item: T? = null, val key: Int = 0)
 
+data class ListState<T>(
+    val items: List<T> = emptyList(),
+    /** The local database answered at least once. */
+    val loaded: Boolean = false,
+    val isRefreshing: Boolean = false,
+)
+
 data class EntryListUiState<T>(
-    val list: PagedState<T> = PagedState(),
+    val list: ListState<T> = ListState(),
     val editor: EditorState<T>? = null,
     val isSaving: Boolean = false,
 )
 
 /**
- * A paged list whose items are created, edited and deleted through a form dialog; the shape shared by
- * every list in the Expo app. Subclasses call [refresh] from their init block.
+ * A list read from the local database whose items are created, edited and deleted through a form
+ * dialog; the shape shared by every list. Saving pushes the change to the server and the list updates
+ * from the database once it's stored.
  */
 abstract class EntryListViewModel<T : Any>(
+    protected val syncRepository: SyncRepository,
     protected val userMessages: UserMessages,
-    loadErrorMessage: String,
 ) : ViewModel() {
 
-    protected val pagedList = PagedList(
-        scope = viewModelScope,
-        onError = { userMessages.report(loadErrorMessage, it) },
-        fetchPage = { skip, limit -> fetchPage(skip, limit) },
-    )
+    /** The items to show, observed from the database. */
+    protected abstract fun items(): Flow<List<T>>
 
     private val editor = MutableStateFlow<EditorState<T>?>(null)
     private val isSaving = MutableStateFlow(false)
 
-    val uiState: StateFlow<EntryListUiState<T>> =
-        combine(pagedList.state, editor, isSaving, ::EntryListUiState)
-            .stateIn(viewModelScope, SharingStarted.Eagerly, EntryListUiState())
+    // Lazy: items() is implemented by subclasses, which aren't constructed yet while this class is.
+    val uiState: StateFlow<EntryListUiState<T>> by lazy {
+        combine(
+            items().map { ListState(it, loaded = true) }.onStart { emit(ListState()) },
+            syncRepository.isSyncing,
+            editor,
+            isSaving,
+        ) { list, syncing, editor, saving ->
+            EntryListUiState(list.copy(isRefreshing = syncing), editor, saving)
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), EntryListUiState())
+    }
 
-    protected abstract suspend fun fetchPage(skip: Int, limit: Int): List<T>
-
-    /** Called after a successful create, update or delete. */
-    protected open fun onChanged() = refresh()
-
-    fun refresh() = pagedList.refresh()
-
-    fun loadMore() = pagedList.loadMore()
+    /** Pull-to-refresh: fetches what changed on the server. */
+    fun refresh() {
+        viewModelScope.launch {
+            userMessages.runReporting("No se pudo sincronizar") { syncRepository.sync() }
+        }
+    }
 
     fun openNew() {
         editor.value = EditorState()
@@ -82,7 +97,6 @@ abstract class EntryListViewModel<T : Any>(
             if (!succeeded) return@launch
             userMessages.show(successMessage)
             editor.update { if (createAnother && it != null) EditorState(key = it.key + 1) else null }
-            onChanged()
         }
     }
 }

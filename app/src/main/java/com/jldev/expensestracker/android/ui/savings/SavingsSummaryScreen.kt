@@ -10,7 +10,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -18,7 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.jldev.expensestracker.android.data.remote.model.GroupedSaving
+import com.jldev.expensestracker.android.data.model.GroupedSaving
 import com.jldev.expensestracker.android.ui.components.EntryListScreen
 import com.jldev.expensestracker.android.ui.components.RecurrentMarker
 import com.jldev.expensestracker.android.ui.format.formatMoney
@@ -28,17 +27,14 @@ import com.jldev.expensestracker.android.ui.theme.DodgerBlue
 fun SavingsSummaryScreen(viewModel: SavingsSummaryViewModel = hiltViewModel()) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    LaunchedEffect(Unit) { viewModel.refresh() }
-
     EntryListScreen(
         state = uiState.list,
         onRefresh = viewModel::refresh,
-        onLoadMore = viewModel::loadMore,
         onAdd = viewModel::openNew,
         addDescription = "Nuevo ahorro",
         emptyText = "No hay ahorros qué mostrar",
         endText = null,
-        key = GroupedSaving::id,
+        key = GroupedSaving::uuid,
     ) { SavingTypeCard(it) }
 
     uiState.editor?.let { editor ->

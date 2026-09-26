@@ -6,13 +6,13 @@ import androidx.lifecycle.viewModelScope
 import com.auth0.android.authentication.AuthenticationException
 import com.jldev.expensestracker.android.auth.AuthRepository
 import com.jldev.expensestracker.android.data.CycleRepository
-import com.jldev.expensestracker.android.data.remote.model.CycleStatus
+import com.jldev.expensestracker.android.data.model.CycleStatus
+import com.jldev.expensestracker.android.data.sync.SyncRepository
 import com.jldev.expensestracker.android.ui.UserMessages
 import com.jldev.expensestracker.android.ui.common.runReporting
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -25,7 +25,8 @@ data class ShellUiState(
 @HiltViewModel
 class ShellViewModel @Inject constructor(
     private val authRepository: AuthRepository,
-    private val cycleRepository: CycleRepository,
+    cycleRepository: CycleRepository,
+    private val syncRepository: SyncRepository,
     private val userMessages: UserMessages,
 ) : ViewModel() {
 
@@ -36,14 +37,10 @@ class ShellViewModel @Inject constructor(
     val messages = userMessages.messages
 
     init {
-        viewModelScope.launch { loadCycles() }
-        // Emits the current cycle first, which does the initial load.
-        viewModelScope.launch { cycleRepository.selectedCycleId.collectLatest { refreshStatus() } }
-    }
-
-    fun refresh() {
-        viewModelScope.launch { loadCycles() }
-        viewModelScope.launch { refreshStatus() }
+        // Screens show the local copy right away; this brings in what changed on the server.
+        viewModelScope.launch {
+            userMessages.runReporting("No se pudo sincronizar") { syncRepository.sync() }
+        }
     }
 
     fun logout(activityContext: Context) {
@@ -54,13 +51,5 @@ class ShellViewModel @Inject constructor(
                 if (!e.isCanceled) userMessages.show(e.getDescription())
             }
         }
-    }
-
-    private suspend fun loadCycles() {
-        userMessages.runReporting("Error al obtener la lista de ciclos") { cycleRepository.loadCycles() }
-    }
-
-    private suspend fun refreshStatus() {
-        userMessages.runReporting("Error al obtener el estado del ciclo") { cycleRepository.refreshStatus() }
     }
 }

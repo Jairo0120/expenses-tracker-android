@@ -1,9 +1,8 @@
 package com.jldev.expensestracker.android.ui.savings
 
-import com.jldev.expensestracker.android.data.remote.api.SavingsApi
-import com.jldev.expensestracker.android.data.remote.model.RecurrentSaving
-import com.jldev.expensestracker.android.data.remote.model.RecurrentSavingCreate
-import com.jldev.expensestracker.android.data.remote.model.RecurrentSavingUpdate
+import com.jldev.expensestracker.android.data.SavingsRepository
+import com.jldev.expensestracker.android.data.model.RecurrentSavingItem
+import com.jldev.expensestracker.android.data.sync.SyncRepository
 import com.jldev.expensestracker.android.ui.UserMessages
 import com.jldev.expensestracker.android.ui.common.EntryListViewModel
 import com.jldev.expensestracker.android.ui.components.EntryValues
@@ -12,15 +11,12 @@ import javax.inject.Inject
 
 @HiltViewModel
 class RecurrentSavingsViewModel @Inject constructor(
-    private val savingsApi: SavingsApi,
+    private val savingsRepository: SavingsRepository,
+    syncRepository: SyncRepository,
     userMessages: UserMessages,
-) : EntryListViewModel<RecurrentSaving>(userMessages, "Error al obtener los ahorros recurrentes") {
+) : EntryListViewModel<RecurrentSavingItem>(syncRepository, userMessages) {
 
-    init {
-        refresh()
-    }
-
-    override suspend fun fetchPage(skip: Int, limit: Int) = savingsApi.listRecurrent(skip, limit)
+    override fun items() = savingsRepository.recurrentSavings()
 
     fun save(values: EntryValues, enabled: Boolean, createAnother: Boolean) {
         val isNew = uiState.value.editor?.item == null
@@ -34,22 +30,14 @@ class RecurrentSavingsViewModel @Inject constructor(
             createAnother = createAnother,
         ) { item ->
             if (item == null) {
-                savingsApi.createRecurrent(RecurrentSavingCreate(values.description, values.amount))
+                savingsRepository.createRecurrent(values.description, values.amount)
             } else {
-                savingsApi.updateRecurrent(
-                    item.id,
-                    RecurrentSavingUpdate(
-                        // Renames the saving type in the backend, so only send a real change.
-                        description = values.description.takeIf { it != item.savingType.description },
-                        valSaving = values.amount,
-                        enabled = enabled,
-                    ),
-                )
+                savingsRepository.updateRecurrent(item, values.description, values.amount, enabled)
             }
         }
     }
 
     fun delete() = submit("Ahorro recurrente eliminado", "No se pudo eliminar el ahorro recurrente") { item ->
-        savingsApi.deleteRecurrent(checkNotNull(item).id)
+        savingsRepository.deleteRecurrent(checkNotNull(item))
     }
 }

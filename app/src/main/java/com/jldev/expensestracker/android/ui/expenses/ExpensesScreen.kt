@@ -16,8 +16,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.jldev.expensestracker.android.data.remote.model.Budget
-import com.jldev.expensestracker.android.data.remote.model.Expense
+import com.jldev.expensestracker.android.data.model.BudgetTotal
+import com.jldev.expensestracker.android.data.model.ExpenseItem
 import com.jldev.expensestracker.android.ui.common.EditorState
 import com.jldev.expensestracker.android.ui.components.BudgetChips
 import com.jldev.expensestracker.android.ui.components.CyclePicker
@@ -35,17 +35,19 @@ import com.jldev.expensestracker.android.ui.theme.PersianRed
 @Composable
 fun ExpensesScreen(viewModel: ExpensesViewModel = hiltViewModel()) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val filters by viewModel.filters.collectAsStateWithLifecycle()
+    val cycles by viewModel.cycles.collectAsStateWithLifecycle()
+    val currentCycle by viewModel.currentCycle.collectAsStateWithLifecycle()
+    val budgets by viewModel.budgets.collectAsStateWithLifecycle()
+    val budgetFilter by viewModel.budgetFilter.collectAsStateWithLifecycle()
 
     EntryListScreen(
         state = uiState.list,
         onRefresh = viewModel::refresh,
-        onLoadMore = viewModel::loadMore,
         onAdd = viewModel::openNew,
         addDescription = "Nuevo gasto",
         emptyText = "No hay gastos qué mostrar",
         endText = "No hay más gastos qué mostrar",
-        key = Expense::id,
+        key = { it.expense.uuid },
         header = {
             Row(
                 Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
@@ -53,13 +55,13 @@ fun ExpensesScreen(viewModel: ExpensesViewModel = hiltViewModel()) {
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 CyclePicker(
-                    cycles = filters.cycles,
-                    selectedCycleId = filters.selectedCycleId,
+                    cycles = cycles,
+                    selectedCycleUuid = currentCycle?.uuid,
                     onSelect = viewModel::selectCycle,
                 )
                 BudgetChips(
-                    budgets = filters.budgets,
-                    selectedId = filters.budgetFilter,
+                    budgets = budgets,
+                    selectedUuid = budgetFilter,
                     onSelect = viewModel::filterByBudget,
                     modifier = Modifier.weight(1f),
                 )
@@ -73,7 +75,7 @@ fun ExpensesScreen(viewModel: ExpensesViewModel = hiltViewModel()) {
         ExpenseFormDialog(
             editor = editor,
             // "Sin ppto." (id 0) is only a filter; the Expo form offered it and saved budget_id 0.
-            budgets = filters.budgets.filterNot(Budget::isUnbudgeted),
+            budgets = budgets.filterNot(BudgetTotal::isUnbudgeted),
             isSaving = uiState.isSaving,
             onDismiss = viewModel::closeEditor,
             onSave = viewModel::save,
@@ -83,7 +85,8 @@ fun ExpensesScreen(viewModel: ExpensesViewModel = hiltViewModel()) {
 }
 
 @Composable
-private fun ExpenseCard(expense: Expense, onClick: () -> Unit) {
+private fun ExpenseCard(item: ExpenseItem, onClick: () -> Unit) {
+    val expense = item.expense
     EntryCard(
         description = expense.description,
         amount = expense.valExpense,
@@ -91,10 +94,10 @@ private fun ExpenseCard(expense: Expense, onClick: () -> Unit) {
         middle = { if (expense.isRecurrentExpense) RecurrentMarker("Gasto recurrente") },
     ) {
         Text(
-            expense.budget?.description ?: "Sin presupuesto",
+            item.budgetDescription ?: "Sin presupuesto",
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.SemiBold,
-            color = if (expense.budget != null) DodgerBlue.c300 else PersianRed.c400,
+            color = if (item.budgetDescription != null) DodgerBlue.c300 else PersianRed.c400,
         )
         Text(formatDate(expense.dateExpense), style = MaterialTheme.typography.labelSmall, color = DodgerBlue.c500)
     }
@@ -102,16 +105,16 @@ private fun ExpenseCard(expense: Expense, onClick: () -> Unit) {
 
 @Composable
 private fun ExpenseFormDialog(
-    editor: EditorState<Expense>,
-    budgets: List<Budget>,
+    editor: EditorState<ExpenseItem>,
+    budgets: List<BudgetTotal>,
     isSaving: Boolean,
     onDismiss: () -> Unit,
-    onSave: (values: EntryValues, budgetId: Int?, createRecurrent: Boolean, createAnother: Boolean) -> Unit,
+    onSave: (values: EntryValues, budgetUuid: String?, createRecurrent: Boolean, createAnother: Boolean) -> Unit,
     onDelete: () -> Unit,
 ) {
-    val expense = editor.item
+    val expense = editor.item?.expense
     val form = remember(editor) { EntryForm(expense?.valExpense, expense?.description.orEmpty()) }
-    var budgetId by remember(editor) { mutableStateOf(expense?.budget?.id) }
+    var budgetUuid by remember(editor) { mutableStateOf(expense?.budgetUuid) }
     var createRecurrent by remember(editor) { mutableStateOf(false) }
 
     EntryFormDialog(
@@ -123,16 +126,16 @@ private fun ExpenseFormDialog(
         isSaving = isSaving,
         deleteQuestion = "¿Eliminar este gasto?",
         onDismiss = onDismiss,
-        onSave = { values, createAnother -> onSave(values, budgetId, createRecurrent, createAnother) },
+        onSave = { values, createAnother -> onSave(values, budgetUuid, createRecurrent, createAnother) },
         onDelete = onDelete,
     ) {
         Text("Presupuesto", fontWeight = FontWeight.Bold, color = androidx.compose.ui.graphics.Color.White)
         BudgetChips(
             budgets = budgets,
-            selectedId = budgetId,
-            onSelect = { id ->
-                budgetId = id
-                budgets.firstOrNull { it.id == id }?.let { form.suggestDescription(it.description) }
+            selectedUuid = budgetUuid,
+            onSelect = { uuid ->
+                budgetUuid = uuid
+                budgets.firstOrNull { it.uuid == uuid }?.let { form.suggestDescription(it.description) }
             },
             enabled = !isSaving,
         )

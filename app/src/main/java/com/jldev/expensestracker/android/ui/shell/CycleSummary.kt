@@ -13,7 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import com.jldev.expensestracker.android.data.remote.model.CycleStatus
+import com.jldev.expensestracker.android.data.model.CycleStatus
 import com.jldev.expensestracker.android.ui.format.formatMoney
 import com.jldev.expensestracker.android.ui.theme.DodgerBlue
 import com.jldev.expensestracker.android.ui.theme.PersianRed

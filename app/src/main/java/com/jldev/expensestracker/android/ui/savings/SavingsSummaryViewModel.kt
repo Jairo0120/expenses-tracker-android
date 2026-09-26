@@ -1,15 +1,15 @@
 package com.jldev.expensestracker.android.ui.savings
 
-import androidx.lifecycle.viewModelScope
 import com.jldev.expensestracker.android.data.CycleRepository
-import com.jldev.expensestracker.android.data.remote.api.SavingsApi
-import com.jldev.expensestracker.android.data.remote.model.GroupedSaving
+import com.jldev.expensestracker.android.data.SavingsRepository
+import com.jldev.expensestracker.android.data.model.GroupedSaving
+import com.jldev.expensestracker.android.data.sync.SyncRepository
 import com.jldev.expensestracker.android.ui.UserMessages
-import com.jldev.expensestracker.android.ui.common.EntryListViewModel
-import com.jldev.expensestracker.android.ui.common.runReporting
+import com.jldev.expensestracker.android.ui.common.CycleEntryListViewModel
 import com.jldev.expensestracker.android.ui.components.EntryValues
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.Flow
+import java.time.Instant
 import javax.inject.Inject
 
 /**
@@ -18,29 +18,22 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class SavingsSummaryViewModel @Inject constructor(
-    private val savingsApi: SavingsApi,
-    private val cycleRepository: CycleRepository,
+    private val savingsRepository: SavingsRepository,
+    cycleRepository: CycleRepository,
+    syncRepository: SyncRepository,
     userMessages: UserMessages,
-) : EntryListViewModel<GroupedSaving>(userMessages, "Error al obtener el resumen de ahorros") {
+) : CycleEntryListViewModel<GroupedSaving>(cycleRepository, syncRepository, userMessages) {
 
-    // The screen refreshes whenever it's shown, since the Ahorros tab changes these totals.
-
-    /** The endpoint isn't paged and returns every saving type at once. */
-    override suspend fun fetchPage(skip: Int, limit: Int): List<GroupedSaving> =
-        if (skip == 0) savingsApi.listGrouped() else emptyList()
-
-    override fun onChanged() {
-        super.onChanged()
-        viewModelScope.launch {
-            userMessages.runReporting("Error al obtener el estado del ciclo") { cycleRepository.refreshStatus() }
-        }
-    }
+    // The totals don't depend on the selected cycle; only new savings go to it.
+    override fun items(cycleUuid: String): Flow<List<GroupedSaving>> = savingsRepository.groupedSavings()
 
     fun save(values: EntryValues, createRecurrent: Boolean, createAnother: Boolean) = submit(
         successMessage = "Ahorro registrado",
         failureMessage = "No se pudo registrar el ahorro",
         createAnother = createAnother,
     ) {
-        savingsApi.create(newSaving(values, cycleRepository.selectedCycleId.value, createRecurrent))
+        savingsRepository.create(
+            values.description, values.amount, Instant.now(), cycleForNewItems().uuid, createRecurrent,
+        )
     }
 }

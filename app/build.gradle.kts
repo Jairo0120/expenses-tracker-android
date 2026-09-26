@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+    alias(libs.plugins.room)
 }
 
 // Environment config lives in the git-ignored local.properties (see local.properties.example),
@@ -83,11 +84,28 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    testOptions {
+        // Robolectric needs Android resources for Room tests on the JVM.
+        unitTests.isIncludeAndroidResources = true
+    }
+
     buildFeatures {
         compose = true
         buildConfig = true
         resValues = true
     }
+}
+
+// Robolectric (Room tests on the JVM) doesn't support the newest JDKs; run unit tests on JDK 21.
+tasks.withType<Test>().configureEach {
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(21) }
+    // Robolectric's file-descriptor shadow reaches into JDK internals.
+    jvmArgs("--add-exports=java.base/jdk.internal.access=ALL-UNNAMED", "--add-opens=java.base/java.io=ALL-UNNAMED")
+}
+
+room {
+    // Exported schemas are what future Room migrations are written against.
+    schemaDirectory("$projectDir/schemas")
 }
 
 dependencies {
@@ -109,6 +127,11 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.auth0)
 
+    implementation(libs.room.runtime)
+    implementation(libs.room.ktx)
+    ksp(libs.room.compiler)
+    implementation(libs.datastore.preferences)
+
     implementation(libs.retrofit)
     implementation(libs.retrofit.kotlinx.serialization)
     implementation(libs.okhttp)
@@ -117,4 +140,6 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.okhttp.mockwebserver)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.test.core)
 }

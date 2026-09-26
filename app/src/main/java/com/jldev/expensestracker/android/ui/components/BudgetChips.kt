@@ -9,6 +9,7 @@ import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.SpanStyle
@@ -16,29 +17,31 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
-import com.jldev.expensestracker.android.data.remote.model.Budget
+import com.jldev.expensestracker.android.data.model.BudgetTotal
 import com.jldev.expensestracker.android.ui.format.formatShortMoney
 import com.jldev.expensestracker.android.ui.theme.DodgerBlue
 
 /** The Expo app's BadgetPicker: a one-line chip per budget with "spent / budget"; tapping the selected one clears it. */
 @Composable
 fun BudgetChips(
-    budgets: List<Budget>,
-    selectedId: Int?,
-    onSelect: (Int?) -> Unit,
+    budgets: List<BudgetTotal>,
+    selectedUuid: String?,
+    onSelect: (String?) -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
     // Start at the selected budget, e.g. when editing an expense whose budget is far down the list.
-    val listState = rememberLazyListState(
-        initialFirstVisibleItemIndex = budgets.indexOfFirst { it.id == selectedId }.coerceAtLeast(0),
-    )
+    val selectedIndex = budgets.indexOfFirst { it.uuid == selectedUuid }.coerceAtLeast(0)
+    val listState = rememberLazyListState(initialFirstVisibleItemIndex = selectedIndex)
+    // A chip added in front (e.g. "Sin ppto." once unbudgeted expenses sync in) would otherwise leave the
+    // row anchored on the old first chip, hiding the new one.
+    LaunchedEffect(budgets.firstOrNull()?.uuid) { listState.scrollToItem(selectedIndex) }
     LazyRow(state = listState, modifier = modifier, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        items(budgets, key = { it.id }) { budget ->
-            val selected = budget.id == selectedId
+        items(budgets, key = { it.uuid }) { budget ->
+            val selected = budget.uuid == selectedUuid
             FilterChip(
                 selected = selected,
-                onClick = { onSelect(if (selected) null else budget.id) },
+                onClick = { onSelect(if (selected) null else budget.uuid) },
                 enabled = enabled,
                 label = {
                     Text(

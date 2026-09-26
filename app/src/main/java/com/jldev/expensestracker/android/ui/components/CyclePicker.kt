@@ -22,24 +22,16 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.jldev.expensestracker.android.R
-import com.jldev.expensestracker.android.data.remote.model.CycleListItem
+import com.jldev.expensestracker.android.data.local.CycleEntity
 import com.jldev.expensestracker.android.ui.format.formatMonth
 import com.jldev.expensestracker.android.ui.format.formatShortDate
 import com.jldev.expensestracker.android.ui.theme.DodgerBlue
-import java.time.LocalDate
-
-/**
- * The cycle a null selection stands for. The backend means its active cycle; the list doesn't flag it,
- * so assume the one containing [today] (cycles are months), else the newest.
- */
-fun activeCycle(cycles: List<CycleListItem>, today: LocalDate = LocalDate.now()): CycleListItem? =
-    cycles.firstOrNull { !today.isBefore(it.startDate) && !today.isAfter(it.endDate) } ?: cycles.firstOrNull()
 
 /** How many of the newest cycles the menu lists before "Ver más". */
 const val RECENT_CYCLES = 24
 
 /** The cycles the menu lists: the newest [limit] unless [showAll]. */
-fun visibleCycles(cycles: List<CycleListItem>, showAll: Boolean, limit: Int = RECENT_CYCLES): List<CycleListItem> =
+fun visibleCycles(cycles: List<CycleEntity>, showAll: Boolean, limit: Int = RECENT_CYCLES): List<CycleEntity> =
     if (showAll) cycles else cycles.take(limit)
 
 /**
@@ -48,14 +40,15 @@ fun visibleCycles(cycles: List<CycleListItem>, showAll: Boolean, limit: Int = RE
  */
 @Composable
 fun CyclePicker(
-    cycles: List<CycleListItem>,
-    selectedCycleId: Int?,
-    onSelect: (Int) -> Unit,
+    cycles: List<CycleEntity>,
+    /** The cycle being shown. */
+    selectedCycleUuid: String?,
+    onSelect: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var expanded by remember { mutableStateOf(false) }
     var showAll by remember { mutableStateOf(false) }
-    val shown = cycles.firstOrNull { it.id == selectedCycleId } ?: activeCycle(cycles)
+    val shown = cycles.firstOrNull { it.uuid == selectedCycleUuid }
 
     Box(modifier) {
         AssistChip(
@@ -90,10 +83,10 @@ fun CyclePicker(
                     DropdownMenuItem(
                         text = { Text(formatMonth(cycle.startDate)) },
                         onClick = {
-                            onSelect(cycle.id)
+                            onSelect(cycle.uuid)
                             expanded = false
                         },
-                        trailingIcon = if (cycle.id == shown?.id) {
+                        trailingIcon = if (cycle.uuid == shown?.uuid) {
                             { Icon(painterResource(R.drawable.ic_check), contentDescription = "Seleccionado") }
                         } else {
                             null

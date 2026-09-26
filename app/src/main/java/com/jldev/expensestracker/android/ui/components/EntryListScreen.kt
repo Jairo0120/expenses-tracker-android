@@ -6,17 +6,16 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import com.jldev.expensestracker.android.ui.common.PagedState
+import com.jldev.expensestracker.android.ui.common.ListState
 
 /**
- * A tab's content: optional [header] (filters) and the paged list. Its add button lives in the shell and
+ * A tab's content: optional [header] (filters) and the list. Its add button lives in the shell and
  * hides while the list scrolls down, so it doesn't cover the cards being read.
  */
 @Composable
 fun <T> EntryListScreen(
-    state: PagedState<T>,
+    state: ListState<T>,
     onRefresh: () -> Unit,
-    onLoadMore: () -> Unit,
     onAdd: () -> Unit,
     addDescription: String,
     emptyText: String,
@@ -30,10 +29,9 @@ fun <T> EntryListScreen(
 
     Column(Modifier.fillMaxSize()) {
         header()
-        PagedLazyColumn(
+        EntryLazyColumn(
             state = state,
             onRefresh = onRefresh,
-            onLoadMore = onLoadMore,
             key = key,
             emptyText = emptyText,
             endText = endText,

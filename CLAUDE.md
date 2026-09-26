@@ -17,7 +17,8 @@ https://claude.ai/code/artifact/e725ea4c-d2ad-4546-96eb-20acb2935e62
 - Android SDK in `~/Android/Sdk` (command-line tools, platform 37). The system JDK (26) runs Gradle fine.
 - `local.properties` (git-ignored; see `local.properties.example`) holds `sdk.dir` and per-build config:
   `dev.*` for the debug build, `release.*` for release, shared `auth0.audience`.
-- `./gradlew testDebugUnitTest` — JVM unit tests (MockWebServer API tests, PagedList, formatters…).
+- `./gradlew testDebugUnitTest` — JVM unit tests (Room DAOs and sync via Robolectric, MockWebServer, formatters…).
+  They run on a JDK 21 toolchain that Gradle downloads (Robolectric doesn't support newer JDKs).
 - `./gradlew installDebug` — installs `com.jldev.expensestracker.android.dev` "(DEV) Expenses Tracker" on the
   USB-connected phone.
 - `./gradlew assembleRelease` → `app/build/outputs/apk/release/app-release.apk`
@@ -39,21 +40,31 @@ https://claude.ai/code/artifact/e725ea4c-d2ad-4546-96eb-20acb2935e62
 
 ## Stack and layout
 
-Kotlin, Jetpack Compose (Material 3), Hilt, Auth0.Android v4, Retrofit 3 + OkHttp 5 + kotlinx.serialization.
+Kotlin, Jetpack Compose (Material 3), Hilt, Auth0.Android v4, Room 2.8, DataStore, Retrofit 3 + OkHttp 5 +
+kotlinx.serialization.
 AGP 9 with built-in Kotlin; versions in `gradle/libs.versions.toml`. No Navigation Compose: the shell switches
 tabs by state and forms are dialogs.
 
 `app/src/main/java/com/jldev/expensestracker/android/`
 - `auth/AuthRepository` — Auth0 login/logout, `CredentialsManager` (auto refresh), `isSignedIn` flow.
-- `data/remote/` — `ApiJson`, one Retrofit service per area (`api/`), models (`model/`), `AuthInterceptor`,
-  `toUserMessage()` for Spanish error text. `data/CycleRepository` — shared cycles, selected cycle, status.
-- `di/NetworkModule` — OkHttp/Retrofit/services.
+- `data/local/` — Room: `Entities.kt` (one class per synced table, doubling as the /sync JSON record), `Daos.kt`
+  (including the summary queries that mirror the backend SQL), `AppDatabase`. Schemas exported to
+  `app/schemas/` (bump the version and add a migration when entities change).
+- `data/model/` — what screens show: `ExpenseItem`, `BudgetTotal` (+ `UNBUDGETED`), `CycleStatus`, `GroupedSaving`…
+- `data/sync/` — `SyncApi` (GET/POST /sync), `SyncTables` (wire name ↔ DAO per table, push encoding),
+  `SyncStore` (cursor in DataStore), `SyncRepository` (pull all pages, push + store results + pull, clear).
+- `data/*Repository` — per area: read Flows from Room, and turn user actions into sync pushes, including the
+  side effects the old REST endpoints did server-side (e.g. a recurrent budget also creates/edits/deletes the
+  active cycle's copy; saving types are found or created by capitalized name). `CycleRepository` — cycles,
+  selected/current cycle (null selection = the active one) and its status.
+- `data/remote/` — `ApiJson`, `AuthInterceptor`, `toUserMessage()` for Spanish error text.
+- `di/` — `NetworkModule` (OkHttp/Retrofit/SyncApi), `DatabaseModule`.
 - `ui/AppRoot` — login vs. shell; owns a session-scoped `ViewModelStore` cleared on logout.
 - `ui/shell/` — drawer (Gastos/Ingresos/Ahorros), bottom tabs per section (`Destinations.kt`), top bar with
   the cycle summary, snackbar, and the add button slot.
-- `ui/common/` — `PagedList` (skip/limit paging), `EntryListViewModel` (list + form dialog + submit),
-  `CycleEntryListViewModel` (adds cycle selection and header refresh), `runReporting`/`report`.
-- `ui/components/` — `EntryListScreen`, `PagedLazyColumn`, `EntryFormDialog`/`EntryForm` (money field),
+- `ui/common/` — `EntryListViewModel` (Room-backed list + form dialog + submit; refresh = sync),
+  `CycleEntryListViewModel` (items of the current cycle), `runReporting`/`report`.
+- `ui/components/` — `EntryListScreen`, `EntryLazyColumn`, `EntryFormDialog`/`EntryForm` (money field),
   `EntryCard`, `BudgetChips`, `CyclePicker`, `AddButtonHost`, …
 - Feature screens: `ui/expenses`, `ui/budgets` (recurrent budgets = "Presupuestos" tab), `ui/incomes`,
   `ui/savings` (Resumen = grouped savings, Ahorros, Recurrentes).
@@ -65,15 +76,18 @@ tabs by state and forms are dialogs.
   `Z`). Cycle dates are `LocalDate`. Always send `date_*` on create.
 - `ApiJson`: snake_case naming, `explicitNulls = false` (Kotlin nulls are omitted). To send a real JSON null,
   use a `JsonElement` field — see `ExpenseUpdate.budgetId` / `budgetChange()` (clearing an expense's budget).
-- A null `cycleId` means the backend's active cycle. Budget id `0` is the synthetic "Sin ppto." entry: a
-  list filter only, never offered in the form.
-- A new list screen: subclass `EntryListViewModel` (or `CycleEntryListViewModel`) and call `refresh()`
-  (or `start()`) **from the subclass init**, never the base init (fetching would hit unset subclass fields).
-  Mutations go through `submit(...)`; override `onChanged()` for extra refreshes.
+- Screens read only from Room; everything is keyed by uuid (no server integer ids on the phone). Writes are
+  pushes through `SyncRepository.push` (for now online: step 4 adds the offline queue); the server's copies
+  are stored and a pull follows, so Room Flows update the screens. Logout clears the database and cursor.
+- `BudgetTotal.UNBUDGETED` is the synthetic "Sin ppto." entry: a list filter only, never offered in the form.
+- A new list screen: subclass `EntryListViewModel` (or `CycleEntryListViewModel`) and implement `items()`;
+  `uiState` is lazy because subclasses aren't constructed yet during the base init. Mutations go through
+  `submit(...)`.
 - Launching `async` requests from `viewModelScope.launch` must be wrapped in `coroutineScope {}` — a failure
   otherwise escapes the try/catch and crashes the app.
-- `PagedLazyColumn` only emits keyed items; an always-present footer would become the scroll anchor and jump
-  the list to the end on first load.
+- Lazy lists/rows anchor on the first visible item's key: an always-present footer, or a chip added in
+  front later (e.g. "Sin ppto." once unbudgeted expenses sync in), would scroll the view unexpectedly.
+  `EntryLazyColumn` only emits keyed items; `BudgetChips` re-scrolls when its first chip changes.
 - Screens publish their add button with `PublishAddButton`; it lives in the shell Scaffold so snackbars stack
   above it.
 - A saving's "description" is its **saving type**. Editing it renames the whole type for every saving — this
@@ -97,9 +111,9 @@ tabs by state and forms are dialogs.
 - Offline-only data must be uploadable later when the user creates an account (a normal sync push).
 - Keep the last 6 cycles of expenses/incomes/budgets locally (to be reviewed); older cycles load on demand
   when online. Keep **all** savings locally: "Totalizado" sums every saving ever recorded.
-- Order: (1) backend Alembic + sync columns/data migration, (2) backend `/sync` — both done 2026-09-26, see
-  the backend CLAUDE.md for the protocol — (3) Room + repositories, (4) queue + WorkManager sync + 6-month
-  window, (5) offline-only mode + upload on account creation.
+- Order: (1) backend Alembic + sync columns/data migration, (2) backend `/sync`, (3) Room + repositories, screens
+  reading from Room, writes pushed online — all done 2026-09-26 — (4) offline write queue + WorkManager sync +
+  6-month window with older cycles on demand, (5) offline-only mode + upload on account creation.
 - Pull pages are in version order, not dependency order: a record may reference one that arrives in a later
   page, so Room tables should reference by uuid without enforced foreign keys (or resolve after a full pull).
 - Summaries (cycle status, budget totals, "Sin ppto.", grouped savings) must be computed locally, matching
@@ -109,7 +123,7 @@ tabs by state and forms are dialogs.
 
 2026-09-25/26: scaffold + Auth0 login → networking layer → app shell → Expenses → Incomes and Savings →
 UI polish (compact header, pinned dialogs, cycle menu limited to the last 24 cycles with "Ver más") →
-signed, R8-shrunk release APK (1.0.0) for sideloading.
+signed, R8-shrunk release APK (1.0.0) for sideloading → offline steps 1–3 (Room + /sync).
 Backend fixes made along the way live in `expenses-tracker`.
 
 Open: saving withdrawals UI (`POST /savings/saving-outcome` exists in `SavingsApi`);

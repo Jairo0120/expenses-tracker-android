@@ -10,7 +10,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.text.font.FontWeight
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.jldev.expensestracker.android.data.remote.model.Income
+import com.jldev.expensestracker.android.data.local.IncomeEntity
 import com.jldev.expensestracker.android.ui.components.CycleHeader
 import com.jldev.expensestracker.android.ui.components.EntryCard
 import com.jldev.expensestracker.android.ui.components.EntryForm
@@ -28,12 +28,11 @@ fun IncomesScreen(viewModel: IncomesViewModel = hiltViewModel()) {
     EntryListScreen(
         state = uiState.list,
         onRefresh = viewModel::refresh,
-        onLoadMore = viewModel::loadMore,
         onAdd = viewModel::openNew,
         addDescription = "Nuevo ingreso",
         emptyText = "No hay ingresos qué mostrar",
         endText = "No hay más ingresos qué mostrar",
-        key = Income::id,
+        key = IncomeEntity::uuid,
         header = { CycleHeader(viewModel) },
     ) { income ->
         EntryCard(

@@ -9,7 +9,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.jldev.expensestracker.android.data.remote.model.RecurrentSaving
+import com.jldev.expensestracker.android.data.model.RecurrentSavingItem
 import com.jldev.expensestracker.android.ui.components.EnabledStatus
 import com.jldev.expensestracker.android.ui.components.EntryCard
 import com.jldev.expensestracker.android.ui.components.EntryForm
@@ -26,23 +26,25 @@ fun RecurrentSavingsScreen(viewModel: RecurrentSavingsViewModel = hiltViewModel(
     EntryListScreen(
         state = uiState.list,
         onRefresh = viewModel::refresh,
-        onLoadMore = viewModel::loadMore,
         onAdd = viewModel::openNew,
         addDescription = "Nuevo ahorro recurrente",
         emptyText = "No hay ahorros recurrentes qué mostrar",
         endText = "No hay más ahorros recurrentes qué mostrar",
-        key = RecurrentSaving::id,
+        key = { it.recurrentSaving.uuid },
     ) { item ->
-        EntryCard(item.savingType.description, item.valSaving, onClick = { viewModel.openEdit(item) }) {
-            Text(formatDate(item.createdAt), style = MaterialTheme.typography.labelSmall, color = DodgerBlue.c500)
-            EnabledStatus(item.enabled)
+        val recurrent = item.recurrentSaving
+        EntryCard(item.savingTypeDescription, recurrent.valSaving, onClick = { viewModel.openEdit(item) }) {
+            Text(formatDate(recurrent.createdAt), style = MaterialTheme.typography.labelSmall, color = DodgerBlue.c500)
+            EnabledStatus(recurrent.enabled)
         }
     }
 
     uiState.editor?.let { editor ->
         val item = editor.item
-        val form = remember(editor) { EntryForm(item?.valSaving, item?.savingType?.description.orEmpty()) }
-        var enabled by remember(editor) { mutableStateOf(item?.enabled ?: true) }
+        val form = remember(editor) {
+            EntryForm(item?.recurrentSaving?.valSaving, item?.savingTypeDescription.orEmpty())
+        }
+        var enabled by remember(editor) { mutableStateOf(item?.recurrentSaving?.enabled ?: true) }
         EntryFormDialog(
             form = form,
             title = if (item == null) "Nuevo ahorro recurrente" else "Editar ahorro recurrente",

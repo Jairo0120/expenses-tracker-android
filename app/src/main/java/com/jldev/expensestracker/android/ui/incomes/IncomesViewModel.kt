@@ -1,10 +1,9 @@
 package com.jldev.expensestracker.android.ui.incomes
 
 import com.jldev.expensestracker.android.data.CycleRepository
-import com.jldev.expensestracker.android.data.remote.api.IncomesApi
-import com.jldev.expensestracker.android.data.remote.model.Income
-import com.jldev.expensestracker.android.data.remote.model.IncomeCreate
-import com.jldev.expensestracker.android.data.remote.model.IncomeUpdate
+import com.jldev.expensestracker.android.data.IncomesRepository
+import com.jldev.expensestracker.android.data.local.IncomeEntity
+import com.jldev.expensestracker.android.data.sync.SyncRepository
 import com.jldev.expensestracker.android.ui.UserMessages
 import com.jldev.expensestracker.android.ui.common.CycleEntryListViewModel
 import com.jldev.expensestracker.android.ui.components.EntryValues
@@ -14,17 +13,13 @@ import javax.inject.Inject
 
 @HiltViewModel
 class IncomesViewModel @Inject constructor(
-    private val incomesApi: IncomesApi,
+    private val incomesRepository: IncomesRepository,
     cycleRepository: CycleRepository,
+    syncRepository: SyncRepository,
     userMessages: UserMessages,
-) : CycleEntryListViewModel<Income>(cycleRepository, userMessages, "Error al obtener los ingresos") {
+) : CycleEntryListViewModel<IncomeEntity>(cycleRepository, syncRepository, userMessages) {
 
-    init {
-        start()
-    }
-
-    override suspend fun fetchPage(skip: Int, limit: Int) =
-        incomesApi.list(cycleRepository.selectedCycleId.value, skip, limit)
+    override fun items(cycleUuid: String) = incomesRepository.incomes(cycleUuid)
 
     fun save(values: EntryValues, createRecurrent: Boolean, createAnother: Boolean) {
         val isNew = uiState.value.editor?.item == null
@@ -34,22 +29,16 @@ class IncomesViewModel @Inject constructor(
             createAnother = createAnother,
         ) { income ->
             if (income == null) {
-                incomesApi.create(
-                    IncomeCreate(
-                        description = values.description,
-                        valIncome = values.amount,
-                        dateIncome = Instant.now(),
-                        cycleId = cycleRepository.selectedCycleId.value,
-                        createRecurrentIncome = createRecurrent,
-                    ),
+                incomesRepository.create(
+                    values.description, values.amount, Instant.now(), cycleForNewItems().uuid, createRecurrent,
                 )
             } else {
-                incomesApi.update(income.id, IncomeUpdate(description = values.description, valIncome = values.amount))
+                incomesRepository.update(income, values.description, values.amount)
             }
         }
     }
 
     fun delete() = submit("Ingreso eliminado", "No se pudo eliminar el ingreso") { income ->
-        incomesApi.delete(checkNotNull(income).id)
+        incomesRepository.delete(checkNotNull(income))
     }
 }

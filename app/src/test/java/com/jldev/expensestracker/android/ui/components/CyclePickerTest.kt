@@ -24,4 +24,15 @@ class CyclePickerTest {
         assertEquals(3, activeCycle(cycles, LocalDate.of(2026, 10, 2))?.id)
         assertNull(activeCycle(emptyList()))
     }
+
+    @Test
+    fun `menu lists the newest cycles unless showing all`() {
+        val many = (0 until 30).map { month ->
+            val start = LocalDate.of(2026, 9, 1).minusMonths(month.toLong())
+            CycleListItem(100 - month, "C$month", start, start.plusMonths(1).minusDays(1))
+        }
+        assertEquals(many.take(RECENT_CYCLES), visibleCycles(many, showAll = false))
+        assertEquals(many, visibleCycles(many, showAll = true))
+        assertEquals(cycles, visibleCycles(cycles, showAll = false))
+    }
 }

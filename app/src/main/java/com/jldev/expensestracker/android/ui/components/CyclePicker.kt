@@ -35,7 +35,17 @@ import java.time.LocalDate
 fun activeCycle(cycles: List<CycleListItem>, today: LocalDate = LocalDate.now()): CycleListItem? =
     cycles.firstOrNull { !today.isBefore(it.startDate) && !today.isAfter(it.endDate) } ?: cycles.firstOrNull()
 
-/** Compact cycle selector (a chip with a menu grouped by year) above the cycle-scoped lists. */
+/** How many of the newest cycles the menu lists before "Ver más". */
+const val RECENT_CYCLES = 24
+
+/** The cycles the menu lists: the newest [limit] unless [showAll]. */
+fun visibleCycles(cycles: List<CycleListItem>, showAll: Boolean, limit: Int = RECENT_CYCLES): List<CycleListItem> =
+    if (showAll) cycles else cycles.take(limit)
+
+/**
+ * Compact cycle selector (a chip with a menu grouped by year) above the cycle-scoped lists. The menu
+ * lists the last two years; "Ver más" shows the rest.
+ */
 @Composable
 fun CyclePicker(
     cycles: List<CycleListItem>,
@@ -44,11 +54,16 @@ fun CyclePicker(
     modifier: Modifier = Modifier,
 ) {
     var expanded by remember { mutableStateOf(false) }
+    var showAll by remember { mutableStateOf(false) }
     val shown = cycles.firstOrNull { it.id == selectedCycleId } ?: activeCycle(cycles)
 
     Box(modifier) {
         AssistChip(
-            onClick = { expanded = true },
+            onClick = {
+                // Open expanded when the selected cycle is older than the recent ones, so it's listed.
+                showAll = cycles.indexOf(shown) >= RECENT_CYCLES
+                expanded = true
+            },
             enabled = cycles.isNotEmpty(),
             label = { Text(shown?.let { formatShortDate(it.startDate) } ?: "Ciclo") },
             trailingIcon = {
@@ -60,8 +75,9 @@ fun CyclePicker(
             ),
         )
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            val listed = visibleCycles(cycles, showAll)
             // The list comes newest first, so years come out in descending order.
-            cycles.groupBy { it.startDate.year }.forEach { (year, yearCycles) ->
+            listed.groupBy { it.startDate.year }.forEach { (year, yearCycles) ->
                 if (year != cycles.first().startDate.year) HorizontalDivider()
                 Text(
                     year.toString(),
@@ -84,6 +100,13 @@ fun CyclePicker(
                         },
                     )
                 }
+            }
+            if (listed.size < cycles.size) {
+                HorizontalDivider()
+                DropdownMenuItem(
+                    text = { Text("Ver más", color = DodgerBlue.c300, fontWeight = FontWeight.SemiBold) },
+                    onClick = { showAll = true },
+                )
             }
         }
     }

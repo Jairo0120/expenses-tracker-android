@@ -1,15 +1,22 @@
 package com.jldev.expensestracker.android.ui.components
 
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.InputTransformation
@@ -131,9 +138,10 @@ fun LabeledSwitch(label: String, checked: Boolean, onCheckedChange: (Boolean) ->
 /**
  * The Expo app's create/edit modal. New entries get Guardar and Crear otro; existing ones get
  * Actualizar, plus a delete icon by the title (with a confirmation the Expo app didn't have).
- * [extraContent] goes below the two fields. The card sits near the top of the screen so the keyboard
- * never moves it.
+ * [extraContent] goes below the two fields. The card sits near the top of the screen and stays above the
+ * keyboard: it moves up when the keyboard opens, and the fields scroll while the buttons stay visible.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun EntryFormDialog(
     form: EntryForm,
@@ -153,24 +161,40 @@ fun EntryFormDialog(
 
     LaunchedEffect(form) { focusRequester.requestFocus() }
 
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+    // The text keyboard is much taller than the number pad: move the card up to leave room for it.
+    val topGap by animateDpAsState(if (WindowInsets.isImeVisible) 8.dp else 56.dp, label = "topGap")
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        // The dialog handles the insets itself, so it knows where the keyboard is.
+        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
+    ) {
         // A full-screen dialog window: the scrim area dismisses, the card is pinned to the top.
         Box(
             Modifier
                 .fillMaxSize()
-                .clickable(interactionSource = null, indication = null, onClick = onDismiss),
+                .clickable(interactionSource = null, indication = null, onClick = onDismiss)
+                // Everything below lays out in the area above the keyboard and clear of the system bars.
+                .safeDrawingPadding(),
             contentAlignment = Alignment.TopCenter,
         ) {
             Card(
                 colors = CardDefaults.cardColors(containerColor = DodgerBlue.c950),
                 border = BorderStroke(1.dp, DodgerBlue.c800),
                 modifier = Modifier
-                    .padding(start = 20.dp, end = 20.dp, top = 56.dp)
+                    .padding(start = 20.dp, end = 20.dp, top = topGap, bottom = 8.dp)
                     .fillMaxWidth()
                     // Taps on the card itself must not reach the dismissing background.
                     .clickable(interactionSource = null, indication = null, onClick = {}),
             ) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                // Fields scroll when they don't fit above the keyboard; the buttons below always show.
+                Column(
+                    Modifier
+                        .weight(1f, fill = false)
+                        .verticalScroll(rememberScrollState())
+                        .padding(start = 16.dp, end = 16.dp, top = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             title,
@@ -219,22 +243,24 @@ fun EntryFormDialog(
                         modifier = Modifier.fillMaxWidth(),
                     )
                     extraContent()
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        TextButton(onClick = onDismiss, enabled = !isSaving) { Text("Cancelar") }
-                        if (isEditing) {
-                            Button(onClick = { form.validate()?.let { onSave(it, false) } }, enabled = !isSaving) {
-                                Text("Actualizar")
-                            }
-                        } else {
-                            TextButton(onClick = { form.validate()?.let { onSave(it, true) } }, enabled = !isSaving) {
-                                Text("Crear otro")
-                            }
-                            Button(onClick = { form.validate()?.let { onSave(it, false) } }, enabled = !isSaving) {
-                                Text("Guardar")
-                            }
+                }
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                ) {
+                    TextButton(onClick = onDismiss, enabled = !isSaving) { Text("Cancelar") }
+                    if (isEditing) {
+                        Button(onClick = { form.validate()?.let { onSave(it, false) } }, enabled = !isSaving) {
+                            Text("Actualizar")
+                        }
+                    } else {
+                        TextButton(onClick = { form.validate()?.let { onSave(it, true) } }, enabled = !isSaving) {
+                            Text("Crear otro")
+                        }
+                        Button(onClick = { form.validate()?.let { onSave(it, false) } }, enabled = !isSaving) {
+                            Text("Guardar")
                         }
                     }
                 }

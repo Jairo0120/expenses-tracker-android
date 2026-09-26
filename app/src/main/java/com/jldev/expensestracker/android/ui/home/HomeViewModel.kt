@@ -12,7 +12,9 @@ import com.jldev.expensestracker.android.data.remote.model.CycleListItem
 import com.jldev.expensestracker.android.data.remote.model.CycleStatus
 import com.jldev.expensestracker.android.data.remote.toUserMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -56,11 +58,16 @@ class HomeViewModel @Inject constructor(
         _uiState.update { it.copy(isLoading = true, error = null) }
         viewModelScope.launch {
             try {
-                val status = async { cyclesApi.getStatus() }
-                val cycles = async { cyclesApi.list() }
-                _uiState.update {
-                    it.copy(isLoading = false, status = status.await(), cycles = cycles.await())
+                // coroutineScope makes a failed request surface here instead of cancelling viewModelScope's
+                // launch with an uncaught exception, which crashes the app.
+                val (status, cycles) = coroutineScope {
+                    val status = async { cyclesApi.getStatus() }
+                    val cycles = async { cyclesApi.list() }
+                    status.await() to cycles.await()
                 }
+                _uiState.update { it.copy(isLoading = false, status = status, cycles = cycles) }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: NotAuthenticatedException) {
                 _uiState.update { it.copy(isLoading = false, signedOut = true) }
             } catch (e: Exception) {

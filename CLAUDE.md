@@ -92,4 +92,5 @@ Backend fixes made along the way live in `expenses-tracker`.
 
 Open: saving withdrawals UI (`POST /savings/saving-outcome` exists in `SavingsApi`);
 tapping a Resumen card to see its movements; a 401 from the API shows an error instead of sending the user
-to login; offline cache (deferred).
+to login; offline cache (deferred); internationalization (user wants it later: UI strings are hard-coded
+Spanish in Kotlin, and money/dates are fixed to COP/es-CO in `ui/format/Formatters.kt`).

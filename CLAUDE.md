@@ -97,8 +97,11 @@ tabs by state and forms are dialogs.
 - Offline-only data must be uploadable later when the user creates an account (a normal sync push).
 - Keep the last 6 cycles of expenses/incomes/budgets locally (to be reviewed); older cycles load on demand
   when online. Keep **all** savings locally: "Totalizado" sums every saving ever recorded.
-- Order: (1) backend Alembic + sync columns/data migration, (2) backend `/sync`, (3) Room + repositories,
-  (4) queue + WorkManager sync + 6-month window, (5) offline-only mode + upload on account creation.
+- Order: (1) backend Alembic + sync columns/data migration, (2) backend `/sync` — both done 2026-09-26, see
+  the backend CLAUDE.md for the protocol — (3) Room + repositories, (4) queue + WorkManager sync + 6-month
+  window, (5) offline-only mode + upload on account creation.
+- Pull pages are in version order, not dependency order: a record may reference one that arrives in a later
+  page, so Room tables should reference by uuid without enforced foreign keys (or resolve after a full pull).
 - Summaries (cycle status, budget totals, "Sin ppto.", grouped savings) must be computed locally, matching
   the backend queries.
 

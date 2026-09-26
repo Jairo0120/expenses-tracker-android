@@ -9,6 +9,7 @@ import com.jldev.expensestracker.android.data.remote.model.CycleListItem
 import com.jldev.expensestracker.android.data.remote.model.Expense
 import com.jldev.expensestracker.android.data.remote.model.ExpenseCreate
 import com.jldev.expensestracker.android.data.remote.model.ExpenseUpdate
+import com.jldev.expensestracker.android.data.remote.model.budgetChange
 import com.jldev.expensestracker.android.ui.UserMessages
 import com.jldev.expensestracker.android.ui.common.CycleEntryListViewModel
 import com.jldev.expensestracker.android.ui.common.runReporting
@@ -94,7 +95,12 @@ class ExpensesViewModel @Inject constructor(
             } else {
                 expensesApi.update(
                     expense.id,
-                    ExpenseUpdate(description = values.description, valExpense = values.amount, budgetId = budgetId),
+                    ExpenseUpdate(
+                        description = values.description,
+                        valExpense = values.amount,
+                        // Always sent, so deselecting the budget chip removes the budget.
+                        budgetId = budgetChange(budgetId),
+                    ),
                 )
             }
         }

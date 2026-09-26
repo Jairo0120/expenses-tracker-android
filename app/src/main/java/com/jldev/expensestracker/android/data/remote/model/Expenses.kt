@@ -6,6 +6,9 @@ import com.jldev.expensestracker.android.data.remote.InstantSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseSerializers
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonPrimitive
 import java.time.Instant
 
 @Serializable
@@ -50,16 +53,23 @@ data class ExpenseCreate(
     val createRecurrentExpense: Boolean = false,
 )
 
-/** PATCH body; null fields are left unchanged (the backend ignores nulls, so a budget can't be unset). */
+/** PATCH body; null fields are left out and stay unchanged. */
 @Serializable
 data class ExpenseUpdate(
     val description: String? = null,
     val valExpense: Double? = null,
     val dateExpense: Instant? = null,
-    val budgetId: Int? = null,
+    /**
+     * A budget id, or [JsonNull] to remove the budget (ApiJson drops Kotlin nulls, so clearing needs
+     * a JSON null); see [budgetChange].
+     */
+    val budgetId: JsonElement? = null,
     val cycleId: Int? = null,
     val categories: String? = null,
 )
+
+/** [ExpenseUpdate.budgetId] that sets [budgetId], or removes the budget when it's null. */
+fun budgetChange(budgetId: Int?): JsonElement = budgetId?.let(::JsonPrimitive) ?: JsonNull
 
 @Serializable
 data class RecurrentExpense(

@@ -3,7 +3,6 @@ package com.jldev.expensestracker.android.ui.expenses
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -57,7 +56,6 @@ fun ExpensesScreen(viewModel: ExpensesViewModel = hiltViewModel()) {
                     cycles = filters.cycles,
                     selectedCycleId = filters.selectedCycleId,
                     onSelect = viewModel::selectCycle,
-                    modifier = Modifier.width(150.dp),
                 )
                 BudgetChips(
                     budgets = filters.budgets,

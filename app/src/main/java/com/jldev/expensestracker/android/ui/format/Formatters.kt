@@ -46,3 +46,9 @@ private val shortDateFormatter = DateTimeFormatter.ofPattern("MMM yyyy", esCO)
 /** A cycle's month, e.g. `Sept 2026`. */
 fun formatShortDate(date: LocalDate): String =
     shortDateFormatter.format(date).replaceFirstChar { it.titlecase(esCO) }
+
+private val monthFormatter = DateTimeFormatter.ofPattern("MMMM", esCO)
+
+/** A cycle's month name, e.g. `Septiembre`. */
+fun formatMonth(date: LocalDate): String =
+    monthFormatter.format(date).replaceFirstChar { it.titlecase(esCO) }

@@ -2,7 +2,6 @@ package com.jldev.expensestracker.android.ui.shell
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -14,7 +13,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import com.jldev.expensestracker.android.data.remote.model.CycleStatus
 import com.jldev.expensestracker.android.ui.format.formatMoney
 import com.jldev.expensestracker.android.ui.theme.DodgerBlue
@@ -46,16 +44,17 @@ private fun AvailableLevel.color(): Color = when (this) {
 }
 
 /**
- * Header summary (the Expo app's ExpenseSummary). With income in the cycle it shows what is left to
- * spend, and a tap toggles to "spent de available"; without income it shows the total spent.
+ * Header summary (the Expo app's ExpenseSummary), shown under the section title. With income in the
+ * cycle it shows what is left to spend, and a tap toggles to "spent de available"; without income it
+ * shows the total spent.
  */
 @Composable
 fun CycleSummary(status: CycleStatus, modifier: Modifier = Modifier) {
     var showTotals by rememberSaveable { mutableStateOf(false) }
-    val style = MaterialTheme.typography.bodyMedium
+    val style = MaterialTheme.typography.labelLarge
 
     if (status.moneyAvailable <= 0) {
-        Row(modifier.padding(end = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(modifier, verticalAlignment = Alignment.CenterVertically) {
             Text("Gastado: ", style = style, color = DodgerBlue.c300)
             Text(formatMoney(status.spent), style = style, color = Color.White)
         }
@@ -63,9 +62,7 @@ fun CycleSummary(status: CycleStatus, modifier: Modifier = Modifier) {
     }
 
     Row(
-        modifier
-            .clickable { showTotals = !showTotals }
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+        modifier.clickable { showTotals = !showTotals },
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (showTotals) {

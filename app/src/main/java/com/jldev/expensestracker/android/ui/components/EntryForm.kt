@@ -1,12 +1,13 @@
 package com.jldev.expensestracker.android.ui.components
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -22,10 +23,11 @@ import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.foundation.text.input.then
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
@@ -44,6 +46,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -51,6 +54,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.jldev.expensestracker.android.R
 import com.jldev.expensestracker.android.ui.theme.DodgerBlue
 import com.jldev.expensestracker.android.ui.theme.PersianRed
 import java.util.Locale
@@ -126,10 +130,10 @@ fun LabeledSwitch(label: String, checked: Boolean, onCheckedChange: (Boolean) ->
 
 /**
  * The Expo app's create/edit modal. New entries get Guardar and Crear otro; existing ones get
- * Actualizar and Eliminar (with a confirmation the Expo app didn't have). [extraContent] goes below
- * the two fields.
+ * Actualizar, plus a delete icon by the title (with a confirmation the Expo app didn't have).
+ * [extraContent] goes below the two fields. The card sits near the top of the screen so the keyboard
+ * never moves it.
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun EntryFormDialog(
     form: EntryForm,
@@ -150,73 +154,87 @@ fun EntryFormDialog(
     LaunchedEffect(form) { focusRequester.requestFocus() }
 
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Card(
-            colors = CardDefaults.cardColors(containerColor = DodgerBlue.c950),
-            border = BorderStroke(1.dp, DodgerBlue.c800),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp),
+        // A full-screen dialog window: the scrim area dismisses, the card is pinned to the top.
+        Box(
+            Modifier
+                .fillMaxSize()
+                .clickable(interactionSource = null, indication = null, onClick = onDismiss),
+            contentAlignment = Alignment.TopCenter,
         ) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        title,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = Color.White,
-                        modifier = Modifier.weight(1f),
+            Card(
+                colors = CardDefaults.cardColors(containerColor = DodgerBlue.c950),
+                border = BorderStroke(1.dp, DodgerBlue.c800),
+                modifier = Modifier
+                    .padding(start = 20.dp, end = 20.dp, top = 56.dp)
+                    .fillMaxWidth()
+                    // Taps on the card itself must not reach the dismissing background.
+                    .clickable(interactionSource = null, indication = null, onClick = {}),
+            ) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            title,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = Color.White,
+                            modifier = Modifier.weight(1f),
+                        )
+                        if (isSaving) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                        if (isEditing) {
+                            IconButton(onClick = { confirmingDelete = true }, enabled = !isSaving) {
+                                Icon(
+                                    painterResource(R.drawable.ic_delete),
+                                    contentDescription = "Eliminar",
+                                    tint = PersianRed.c400,
+                                )
+                            }
+                        }
+                    }
+                    OutlinedTextField(
+                        state = form.amount,
+                        label = { Text(amountLabel) },
+                        placeholder = { Text("$ 0") },
+                        inputTransformation = DigitsOnly.then(InputTransformation.maxLength(12)),
+                        outputTransformation = MoneyFormat,
+                        lineLimits = TextFieldLineLimits.SingleLine,
+                        enabled = !isSaving,
+                        isError = form.amountError,
+                        supportingText = if (form.amountError) ({ Text("Campo numérico requerido.") }) else null,
+                        colors = formFieldColors(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .focusRequester(focusRequester),
                     )
-                    if (isSaving) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                }
-                OutlinedTextField(
-                    state = form.amount,
-                    label = { Text(amountLabel) },
-                    placeholder = { Text("$ 0") },
-                    inputTransformation = DigitsOnly.then(InputTransformation.maxLength(12)),
-                    outputTransformation = MoneyFormat,
-                    lineLimits = TextFieldLineLimits.SingleLine,
-                    enabled = !isSaving,
-                    isError = form.amountError,
-                    supportingText = if (form.amountError) ({ Text("Campo numérico requerido.") }) else null,
-                    colors = formFieldColors(),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .focusRequester(focusRequester),
-                )
-                OutlinedTextField(
-                    state = form.description,
-                    label = { Text(descriptionLabel) },
-                    lineLimits = TextFieldLineLimits.SingleLine,
-                    keyboardOptions = KeyboardOptions(
-                        capitalization = KeyboardCapitalization.Sentences,
-                        imeAction = ImeAction.Done,
-                    ),
-                    enabled = !isSaving,
-                    isError = form.descriptionError,
-                    supportingText = if (form.descriptionError) ({ Text("Campo requerido.") }) else null,
-                    colors = formFieldColors(),
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                extraContent()
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    TextButton(onClick = onDismiss, enabled = !isSaving) { Text("Cancelar") }
-                    if (isEditing) {
-                        Button(
-                            onClick = { confirmingDelete = true },
-                            enabled = !isSaving,
-                            colors = ButtonDefaults.buttonColors(containerColor = PersianRed.c800, contentColor = Color.White),
-                        ) { Text("Eliminar") }
-                        Button(onClick = { form.validate()?.let { onSave(it, false) } }, enabled = !isSaving) {
-                            Text("Actualizar")
-                        }
-                    } else {
-                        TextButton(onClick = { form.validate()?.let { onSave(it, true) } }, enabled = !isSaving) {
-                            Text("Crear otro")
-                        }
-                        Button(onClick = { form.validate()?.let { onSave(it, false) } }, enabled = !isSaving) {
-                            Text("Guardar")
+                    OutlinedTextField(
+                        state = form.description,
+                        label = { Text(descriptionLabel) },
+                        lineLimits = TextFieldLineLimits.SingleLine,
+                        keyboardOptions = KeyboardOptions(
+                            capitalization = KeyboardCapitalization.Sentences,
+                            imeAction = ImeAction.Done,
+                        ),
+                        enabled = !isSaving,
+                        isError = form.descriptionError,
+                        supportingText = if (form.descriptionError) ({ Text("Campo requerido.") }) else null,
+                        colors = formFieldColors(),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    extraContent()
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        TextButton(onClick = onDismiss, enabled = !isSaving) { Text("Cancelar") }
+                        if (isEditing) {
+                            Button(onClick = { form.validate()?.let { onSave(it, false) } }, enabled = !isSaving) {
+                                Text("Actualizar")
+                            }
+                        } else {
+                            TextButton(onClick = { form.validate()?.let { onSave(it, true) } }, enabled = !isSaving) {
+                                Text("Crear otro")
+                            }
+                            Button(onClick = { form.validate()?.let { onSave(it, false) } }, enabled = !isSaving) {
+                                Text("Guardar")
+                            }
                         }
                     }
                 }

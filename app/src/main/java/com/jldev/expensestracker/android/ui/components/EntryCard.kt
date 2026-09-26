@@ -15,6 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.jldev.expensestracker.android.ui.format.formatMoney
 import com.jldev.expensestracker.android.ui.theme.DodgerBlue
@@ -41,6 +42,8 @@ fun EntryCard(
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = DodgerBlue.c300,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
                 Text(formatMoney(amount), style = MaterialTheme.typography.titleLarge, color = DodgerBlue.c100)
             }

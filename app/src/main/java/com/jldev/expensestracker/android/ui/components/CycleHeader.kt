@@ -1,7 +1,6 @@
 package com.jldev.expensestracker.android.ui.components
 
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -18,8 +17,6 @@ fun CycleHeader(viewModel: CycleEntryListViewModel<*>) {
         cycles = cycles,
         selectedCycleId = selectedCycleId,
         onSelect = viewModel::selectCycle,
-        modifier = Modifier
-            .padding(horizontal = 12.dp, vertical = 4.dp)
-            .width(150.dp),
+        modifier = Modifier.padding(horizontal = 12.dp),
     )
 }

@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.CircularProgressIndicator
@@ -38,11 +39,12 @@ fun <T> PagedLazyColumn(
     onLoadMore: () -> Unit,
     key: (T) -> Any,
     emptyText: String,
-    endText: String,
+    /** Shown once the last page is in; null for lists that aren't paged. */
+    endText: String?,
     modifier: Modifier = Modifier,
+    listState: LazyListState = rememberLazyListState(),
     itemContent: @Composable (T) -> Unit,
 ) {
-    val listState = rememberLazyListState()
     val currentOnLoadMore by rememberUpdatedState(onLoadMore)
 
     // A refresh for another cycle or filter starts from the top.
@@ -83,7 +85,7 @@ fun <T> PagedLazyColumn(
                         Box(Modifier.fillMaxWidth().padding(8.dp), contentAlignment = Alignment.Center) {
                             CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp)
                         }
-                    } else if (state.endReached) {
+                    } else if (state.endReached && endText != null) {
                         FooterText(endText)
                     }
                 }

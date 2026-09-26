@@ -2,6 +2,7 @@ package com.jldev.expensestracker.android.ui.shell
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -31,6 +32,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -49,6 +51,9 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.jldev.expensestracker.android.R
 import com.jldev.expensestracker.android.ui.budgets.RecurrentBudgetsScreen
+import com.jldev.expensestracker.android.ui.components.AddButtonSlot
+import com.jldev.expensestracker.android.ui.components.AddButtonState
+import com.jldev.expensestracker.android.ui.components.LocalAddButtonState
 import com.jldev.expensestracker.android.ui.expenses.ExpensesScreen
 import com.jldev.expensestracker.android.ui.expenses.RecurrentExpensesScreen
 import com.jldev.expensestracker.android.ui.incomes.IncomesScreen
@@ -71,6 +76,7 @@ fun AppShell(viewModel: ShellViewModel = hiltViewModel()) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     var tab by rememberSaveable { mutableStateOf(Tab.Expenses) }
+    val addButtonState = remember { AddButtonState() }
 
     LaunchedEffect(Unit) {
         viewModel.messages.collect { snackbarHostState.showSnackbar(it) }
@@ -96,11 +102,17 @@ fun AppShell(viewModel: ShellViewModel = hiltViewModel()) {
         Scaffold(
             containerColor = Tailwind.neutral900,
             snackbarHost = { SnackbarHost(snackbarHostState) },
+            floatingActionButton = { AddButtonSlot(addButtonState) },
             topBar = {
                 TopAppBar(
-                    title = { Text(tab.section.title) },
+                    // The summary sits under the title so large amounts don't crowd it on small screens.
+                    title = {
+                        Column {
+                            Text(tab.section.title)
+                            uiState.status?.let { CycleSummary(it) }
+                        }
+                    },
                     navigationIcon = { MenuButton(drawerState) },
-                    actions = { uiState.status?.let { CycleSummary(it) } },
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = Tailwind.neutral900,
                         titleContentColor = DodgerBlue.c400,
@@ -129,18 +141,25 @@ fun AppShell(viewModel: ShellViewModel = hiltViewModel()) {
             },
         ) { padding ->
             Box(Modifier.padding(padding).fillMaxSize()) {
-                when (tab) {
-                    Tab.Expenses -> ExpensesScreen()
-                    Tab.RecurrentExpenses -> RecurrentExpensesScreen()
-                    Tab.Budgets -> RecurrentBudgetsScreen()
-                    Tab.Incomes -> IncomesScreen()
-                    Tab.RecurrentIncomes -> RecurrentIncomesScreen()
-                    Tab.SavingsSummary -> SavingsSummaryScreen()
-                    Tab.Savings -> SavingsScreen()
-                    Tab.RecurrentSavings -> RecurrentSavingsScreen()
+                CompositionLocalProvider(LocalAddButtonState provides addButtonState) {
+                    TabContent(tab)
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun TabContent(tab: Tab) {
+    when (tab) {
+        Tab.Expenses -> ExpensesScreen()
+        Tab.RecurrentExpenses -> RecurrentExpensesScreen()
+        Tab.Budgets -> RecurrentBudgetsScreen()
+        Tab.Incomes -> IncomesScreen()
+        Tab.RecurrentIncomes -> RecurrentIncomesScreen()
+        Tab.SavingsSummary -> SavingsSummaryScreen()
+        Tab.Savings -> SavingsScreen()
+        Tab.RecurrentSavings -> RecurrentSavingsScreen()
     }
 }
 

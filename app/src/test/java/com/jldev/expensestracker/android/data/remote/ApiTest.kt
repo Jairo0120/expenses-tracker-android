@@ -6,6 +6,7 @@ import com.jldev.expensestracker.android.data.remote.model.CycleStatus
 import com.jldev.expensestracker.android.data.remote.model.ExpenseCreate
 import com.jldev.expensestracker.android.data.remote.model.ExpenseSource
 import com.jldev.expensestracker.android.data.remote.model.ExpenseUpdate
+import com.jldev.expensestracker.android.data.remote.model.budgetChange
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.jsonObject
 import mockwebserver3.MockResponse
@@ -132,6 +133,16 @@ class ApiTest {
         assertEquals("PATCH", request.method)
         assertEquals("/prod/expenses/7", request.url.encodedPath)
         assertEquals("""{"val_expense":20000.0}""", request.body!!.utf8())
+    }
+
+    @Test
+    fun `budget change sends an explicit null to remove the budget`() = runBlocking {
+        enqueueJson(EXPENSE_JSON)
+        enqueueJson(EXPENSE_JSON)
+        expensesApi.update(7, ExpenseUpdate(budgetId = budgetChange(null)))
+        expensesApi.update(7, ExpenseUpdate(budgetId = budgetChange(3)))
+        assertEquals("""{"budget_id":null}""", server.takeRequest().body!!.utf8())
+        assertEquals("""{"budget_id":3}""", server.takeRequest().body!!.utf8())
     }
 
     @Test

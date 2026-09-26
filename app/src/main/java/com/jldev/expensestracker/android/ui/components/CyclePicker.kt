@@ -1,12 +1,15 @@
 package com.jldev.expensestracker.android.ui.components
 
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuAnchorType
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -14,12 +17,25 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import com.jldev.expensestracker.android.R
 import com.jldev.expensestracker.android.data.remote.model.CycleListItem
+import com.jldev.expensestracker.android.ui.format.formatMonth
 import com.jldev.expensestracker.android.ui.format.formatShortDate
+import com.jldev.expensestracker.android.ui.theme.DodgerBlue
 import java.time.LocalDate
 
-/** Cycle selector shown on top of the cycle-scoped lists. A null [selectedCycleId] is the active cycle. */
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * The cycle a null selection stands for. The backend means its active cycle; the list doesn't flag it,
+ * so assume the one containing [today] (cycles are months), else the newest.
+ */
+fun activeCycle(cycles: List<CycleListItem>, today: LocalDate = LocalDate.now()): CycleListItem? =
+    cycles.firstOrNull { !today.isBefore(it.startDate) && !today.isAfter(it.endDate) } ?: cycles.firstOrNull()
+
+/** Compact cycle selector (a chip with a menu grouped by year) above the cycle-scoped lists. */
 @Composable
 fun CyclePicker(
     cycles: List<CycleListItem>,
@@ -28,36 +44,46 @@ fun CyclePicker(
     modifier: Modifier = Modifier,
 ) {
     var expanded by remember { mutableStateOf(false) }
-    val selected = cycles.firstOrNull { it.id == selectedCycleId }
-    // Like the Expo dropdown's placeholder: the active cycle is labelled with the current month.
-    val label = formatShortDate(selected?.startDate ?: LocalDate.now())
+    val shown = cycles.firstOrNull { it.id == selectedCycleId } ?: activeCycle(cycles)
 
-    ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { expanded = it && cycles.isNotEmpty() },
-        modifier = modifier,
-    ) {
-        OutlinedTextField(
-            value = label,
-            onValueChange = {},
-            readOnly = true,
-            singleLine = true,
-            label = { Text("Ciclo") },
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-            modifier = Modifier
-                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
-                .fillMaxWidth(),
+    Box(modifier) {
+        AssistChip(
+            onClick = { expanded = true },
+            enabled = cycles.isNotEmpty(),
+            label = { Text(shown?.let { formatShortDate(it.startDate) } ?: "Ciclo") },
+            trailingIcon = {
+                Icon(painterResource(R.drawable.ic_arrow_drop_down), contentDescription = null, Modifier.size(18.dp))
+            },
+            colors = AssistChipDefaults.assistChipColors(
+                labelColor = Color.White,
+                trailingIconContentColor = DodgerBlue.c300,
+            ),
         )
-        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            cycles.forEach { cycle ->
-                DropdownMenuItem(
-                    text = { Text(formatShortDate(cycle.startDate)) },
-                    onClick = {
-                        onSelect(cycle.id)
-                        expanded = false
-                    },
-                    contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            // The list comes newest first, so years come out in descending order.
+            cycles.groupBy { it.startDate.year }.forEach { (year, yearCycles) ->
+                if (year != cycles.first().startDate.year) HorizontalDivider()
+                Text(
+                    year.toString(),
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = DodgerBlue.c300,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                 )
+                yearCycles.forEach { cycle ->
+                    DropdownMenuItem(
+                        text = { Text(formatMonth(cycle.startDate)) },
+                        onClick = {
+                            onSelect(cycle.id)
+                            expanded = false
+                        },
+                        trailingIcon = if (cycle.id == shown?.id) {
+                            { Icon(painterResource(R.drawable.ic_check), contentDescription = "Seleccionado") }
+                        } else {
+                            null
+                        },
+                    )
+                }
             }
         }
     }

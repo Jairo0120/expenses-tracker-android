@@ -37,7 +37,7 @@ fun SavingsSummaryScreen(viewModel: SavingsSummaryViewModel = hiltViewModel()) {
         onAdd = viewModel::openNew,
         addDescription = "Nuevo ahorro",
         emptyText = "No hay ahorros qué mostrar",
-        endText = "",
+        endText = null,
         key = GroupedSaving::id,
     ) { SavingTypeCard(it) }
 

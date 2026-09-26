@@ -19,6 +19,10 @@ fun prop(key: String): String =
 
 val authScheme = "expensestracker"
 
+// Release signing comes from ~/.gradle/gradle.properties (outside the repo, with the keystore in
+// ~/.android/keystores). Without it the release build is left unsigned.
+fun signingProp(name: String): String? = providers.gradleProperty("expensesTracker.release.$name").orNull
+
 android {
     namespace = "com.jldev.expensestracker.android"
     compileSdk = 37
@@ -32,6 +36,15 @@ android {
 
         buildConfigField("String", "AUTH0_AUDIENCE", "\"${prop("auth0.audience")}\"")
         buildConfigField("String", "AUTH0_SCHEME", "\"$authScheme\"")
+    }
+
+    signingConfigs {
+        create("release") {
+            signingProp("storeFile")?.let { storeFile = file(it) }
+            storePassword = signingProp("storePassword")
+            keyAlias = signingProp("keyAlias")
+            keyPassword = signingProp("keyPassword")
+        }
     }
 
     buildTypes {
@@ -49,7 +62,10 @@ android {
             )
         }
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            if (signingProp("storeFile") != null) signingConfig = signingConfigs.getByName("release")
             resValue("string", "app_name", "Expenses Tracker")
             buildConfigField("String", "API_URL", "\"${prop("release.apiUrl")}\"")
             buildConfigField("String", "AUTH0_DOMAIN", "\"${prop("release.auth0.domain")}\"")

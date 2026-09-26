@@ -19,7 +19,13 @@ https://claude.ai/code/artifact/e725ea4c-d2ad-4546-96eb-20acb2935e62
   `dev.*` for the debug build, `release.*` for release, shared `auth0.audience`.
 - `./gradlew testDebugUnitTest` — JVM unit tests (MockWebServer API tests, PagedList, formatters…).
 - `./gradlew installDebug` — installs `com.jldev.expensestracker.android.dev` "(DEV) Expenses Tracker" on the
-  USB-connected phone. Release (`com.jldev.expensestracker.android`, prod API) is **unsigned** for now.
+  USB-connected phone.
+- `./gradlew assembleRelease` → `app/build/outputs/apk/release/app-release.apk`
+  (`com.jldev.expensestracker.android`, prod API, R8 shrinking on), sideloaded with `adb install -r`. Signed
+  with `~/.android/keystores/expenses-tracker-release.p12`; its passwords are the `expensesTracker.release.*`
+  entries in `~/.gradle/gradle.properties` (both outside the repo, backed up by the user). Every update must
+  use this same key. Without those properties the release build comes out unsigned. Test release builds
+  against prod read-only unless the user says otherwise.
 - Debug talks to the dev API on this machine, `http://192.168.0.218:8000` (cleartext allowed only in debug).
   The phone reaches it only because of a ufw rule for port 8000 on the LAN. The dev DB holds only test data:
   creating/deleting records while testing is fine. Never test against prod.
@@ -80,9 +86,10 @@ tabs by state and forms are dialogs.
 ## History (see `git log` for details)
 
 2026-09-25/26: scaffold + Auth0 login → networking layer → app shell → Expenses → Incomes and Savings →
-UI polish (compact header, pinned dialogs, cycle menu limited to the last 24 cycles with "Ver más").
+UI polish (compact header, pinned dialogs, cycle menu limited to the last 24 cycles with "Ver más") →
+signed, R8-shrunk release APK (1.0.0) for sideloading.
 Backend fixes made along the way live in `expenses-tracker`.
 
-Open: release signing; saving withdrawals UI (`POST /savings/saving-outcome` exists in `SavingsApi`);
+Open: saving withdrawals UI (`POST /savings/saving-outcome` exists in `SavingsApi`);
 tapping a Resumen card to see its movements; a 401 from the API shows an error instead of sending the user
 to login; offline cache (deferred).

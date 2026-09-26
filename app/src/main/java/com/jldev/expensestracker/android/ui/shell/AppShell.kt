@@ -2,6 +2,7 @@ package com.jldev.expensestracker.android.ui.shell
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -49,6 +50,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.jldev.expensestracker.android.R
+import com.jldev.expensestracker.android.ui.budgets.RecurrentBudgetsScreen
+import com.jldev.expensestracker.android.ui.expenses.ExpensesScreen
+import com.jldev.expensestracker.android.ui.expenses.RecurrentExpensesScreen
 import com.jldev.expensestracker.android.ui.components.CyclePicker
 import com.jldev.expensestracker.android.ui.theme.DodgerBlue
 import com.jldev.expensestracker.android.ui.theme.PersianRed
@@ -122,31 +126,45 @@ fun AppShell(viewModel: ShellViewModel = hiltViewModel()) {
                 }
             },
         ) { padding ->
-            Column(Modifier.padding(padding).fillMaxSize()) {
-                // Placeholder content until each tab's screen is ported.
-                if (tab in CYCLE_SCOPED_TABS) {
-                    CyclePicker(
-                        cycles = uiState.cycles,
-                        selectedCycleId = uiState.selectedCycleId,
-                        onSelect = viewModel::selectCycle,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                    )
-                }
-                Column(
-                    Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Text("${tab.section.title} · ${tab.label}", color = Color.White)
-                    Text("Próximamente", color = Color.Gray)
+            Box(Modifier.padding(padding).fillMaxSize()) {
+                when (tab) {
+                    Tab.Expenses -> ExpensesScreen()
+                    Tab.RecurrentExpenses -> RecurrentExpensesScreen()
+                    Tab.Budgets -> RecurrentBudgetsScreen()
+                    else -> PlaceholderTab(tab, uiState, onSelectCycle = viewModel::selectCycle)
                 }
             }
         }
     }
 }
 
+/** Stand-in for the tabs not ported yet. */
+@Composable
+private fun PlaceholderTab(tab: Tab, uiState: ShellUiState, onSelectCycle: (Int) -> Unit) {
+    Column(Modifier.fillMaxSize()) {
+        if (tab in CYCLE_SCOPED_TABS) {
+            CyclePicker(
+                cycles = uiState.cycles,
+                selectedCycleId = uiState.selectedCycleId,
+                onSelect = onSelectCycle,
+                modifier = Modifier
+                    .padding(horizontal = 12.dp, vertical = 4.dp)
+                    .width(150.dp),
+            )
+        }
+        Column(
+            Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text("${tab.section.title} · ${tab.label}", color = Color.White)
+            Text("Próximamente", color = Color.Gray)
+        }
+    }
+}
+
 /** Tabs whose lists are filtered by the selected cycle in the Expo app. */
-private val CYCLE_SCOPED_TABS = setOf(Tab.Expenses, Tab.Incomes, Tab.Savings)
+private val CYCLE_SCOPED_TABS = setOf(Tab.Incomes, Tab.Savings)
 
 @Composable
 private fun MenuButton(drawerState: DrawerState) {

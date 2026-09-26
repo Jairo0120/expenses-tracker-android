@@ -8,10 +8,9 @@ import com.jldev.expensestracker.android.auth.AuthRepository
 import com.jldev.expensestracker.android.data.CycleRepository
 import com.jldev.expensestracker.android.data.remote.model.CycleListItem
 import com.jldev.expensestracker.android.data.remote.model.CycleStatus
-import com.jldev.expensestracker.android.data.remote.toUserMessage
 import com.jldev.expensestracker.android.ui.UserMessages
+import com.jldev.expensestracker.android.ui.common.runReporting
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
@@ -43,20 +42,12 @@ class ShellViewModel @Inject constructor(
     val messages = userMessages.messages
 
     init {
-        // This ViewModel lives as long as the Activity, across logout/login, so work is keyed on the session.
-        viewModelScope.launch {
-            authRepository.isSignedIn.collectLatest { signedIn ->
-                if (!signedIn) {
-                    cycleRepository.clear()
-                    return@collectLatest
-                }
-                launch { loadCycles() }
-                cycleRepository.selectedCycleId.collectLatest { refreshStatus() }
-            }
-        }
+        viewModelScope.launch { loadCycles() }
+        // Emits the current cycle first, which does the initial load.
+        viewModelScope.launch { cycleRepository.selectedCycleId.collectLatest { refreshStatus() } }
     }
 
-    fun selectCycle(cycleId: Int?) = cycleRepository.select(cycleId)
+    fun selectCycle(cycleId: Int) = cycleRepository.select(cycleId)
 
     fun refresh() {
         viewModelScope.launch { loadCycles() }
@@ -73,22 +64,11 @@ class ShellViewModel @Inject constructor(
         }
     }
 
-    private suspend fun loadCycles() = reportingErrors("Error al obtener la lista de ciclos") {
-        cycleRepository.loadCycles()
+    private suspend fun loadCycles() {
+        userMessages.runReporting("Error al obtener la lista de ciclos") { cycleRepository.loadCycles() }
     }
 
-    private suspend fun refreshStatus() = reportingErrors("Error al obtener el estado del ciclo") {
-        cycleRepository.refreshStatus()
-    }
-
-    private suspend fun reportingErrors(prefix: String, block: suspend () -> Unit) {
-        try {
-            block()
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            // A lost session is handled by AppRoot switching to login.
-            if (authRepository.isSignedIn.value) userMessages.show("$prefix: ${e.toUserMessage()}")
-        }
+    private suspend fun refreshStatus() {
+        userMessages.runReporting("Error al obtener el estado del ciclo") { cycleRepository.refreshStatus() }
     }
 }

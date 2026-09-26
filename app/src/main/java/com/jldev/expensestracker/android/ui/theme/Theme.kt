@@ -7,11 +7,14 @@ import androidx.compose.ui.graphics.Color
 
 // Palettes carried over from the Expo app's tailwind.config.js.
 object DodgerBlue {
+    val c100 = Color(0xFFE1EEFD)
     val c200 = Color(0xFFBCDCFB)
     val c300 = Color(0xFF81C1F8)
     val c400 = Color(0xFF3DA1F3)
     val c500 = Color(0xFF1D8EEB)
+    val c600 = Color(0xFF0768C2)
     val c700 = Color(0xFF07539D)
+    val c800 = Color(0xFF0A4782)
     val c900 = Color(0xFF0F3C6B)
     val c950 = Color(0xFF0A2647)
 }

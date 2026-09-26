@@ -1,5 +1,6 @@
 package com.jldev.expensestracker.android.ui.components
 
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
@@ -43,7 +44,9 @@ fun CyclePicker(
             singleLine = true,
             label = { Text("Ciclo") },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
+            modifier = Modifier
+                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                .fillMaxWidth(),
         )
         ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             cycles.forEach { cycle ->

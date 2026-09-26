@@ -93,4 +93,12 @@ dependencies {
 
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.auth0)
+
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.kotlinx.serialization)
+    implementation(libs.okhttp)
+    implementation(libs.okhttp.logging)
+
+    testImplementation(libs.junit)
+    testImplementation(libs.okhttp.mockwebserver)
 }

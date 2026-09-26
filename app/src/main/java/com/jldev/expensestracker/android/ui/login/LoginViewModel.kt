@@ -13,19 +13,17 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 sealed interface LoginUiState {
-    data class SignedOut(val error: String? = null) : LoginUiState
+    data class Idle(val error: String? = null) : LoginUiState
     data object SigningIn : LoginUiState
-    data object SignedIn : LoginUiState
 }
 
+// AppRoot swaps this screen out once AuthRepository.isSignedIn turns true.
 @HiltViewModel
 class LoginViewModel @Inject constructor(
     private val authRepository: AuthRepository,
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow<LoginUiState>(
-        if (authRepository.hasValidCredentials()) LoginUiState.SignedIn else LoginUiState.SignedOut()
-    )
+    private val _uiState = MutableStateFlow<LoginUiState>(LoginUiState.Idle())
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
 
     fun login(activityContext: Context) {
@@ -34,9 +32,9 @@ class LoginViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = try {
                 authRepository.login(activityContext)
-                LoginUiState.SignedIn
+                LoginUiState.Idle()
             } catch (e: AuthenticationException) {
-                LoginUiState.SignedOut(error = if (e.isCanceled) null else e.getDescription())
+                LoginUiState.Idle(error = if (e.isCanceled) null else e.getDescription())
             }
         }
     }

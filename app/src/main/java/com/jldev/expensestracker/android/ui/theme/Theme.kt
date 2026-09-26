@@ -7,7 +7,9 @@ import androidx.compose.ui.graphics.Color
 
 // Palettes carried over from the Expo app's tailwind.config.js.
 object DodgerBlue {
+    val c200 = Color(0xFFBCDCFB)
     val c300 = Color(0xFF81C1F8)
+    val c400 = Color(0xFF3DA1F3)
     val c500 = Color(0xFF1D8EEB)
     val c700 = Color(0xFF07539D)
     val c900 = Color(0xFF0F3C6B)
@@ -16,8 +18,17 @@ object DodgerBlue {
 
 object PersianRed {
     val c400 = Color(0xFFFF676C)
+    val c600 = Color(0xFFDA141A)
     val c800 = Color(0xFFA31115)
     val c900 = Color(0xFF861619)
+}
+
+// Tailwind colors the Expo app uses outside its custom palettes.
+object Tailwind {
+    val neutral900 = Color(0xFF171717)
+    val green500 = Color(0xFF22C55E)
+    val yellow500 = Color(0xFFEAB308)
+    val orange500 = Color(0xFFF97316)
 }
 
 private val DarkColors = darkColorScheme(

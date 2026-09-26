@@ -6,7 +6,7 @@ import okhttp3.Response
 import java.io.IOException
 
 fun interface AccessTokenProvider {
-    /** Returns a valid access token, refreshing it if needed; throws when there is no session. */
+    /** Returns a valid access token, refreshing it if needed; throws when there is no session (IOException when offline). */
     suspend fun accessToken(): String
 }
 
@@ -18,6 +18,8 @@ class AuthInterceptor(private val tokenProvider: AccessTokenProvider) : Intercep
         // OkHttp only delivers IOExceptions to the caller; anything else crashes the dispatcher thread.
         val token = try {
             runBlocking { tokenProvider.accessToken() }
+        } catch (e: IOException) {
+            throw e
         } catch (e: Exception) {
             throw NotAuthenticatedException(e)
         }

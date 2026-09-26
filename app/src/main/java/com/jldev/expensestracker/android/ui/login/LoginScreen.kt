@@ -10,7 +10,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -21,16 +20,9 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @Composable
-fun LoginScreen(
-    onSignedIn: () -> Unit,
-    viewModel: LoginViewModel = hiltViewModel(),
-) {
+fun LoginScreen(viewModel: LoginViewModel = hiltViewModel()) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
-
-    LaunchedEffect(uiState) {
-        if (uiState == LoginUiState.SignedIn) onSignedIn()
-    }
 
     Scaffold { padding ->
         Column(
@@ -43,7 +35,7 @@ fun LoginScreen(
         ) {
             Text("Expenses Tracker", style = MaterialTheme.typography.headlineMedium)
             when (val state = uiState) {
-                is LoginUiState.SignedOut -> {
+                is LoginUiState.Idle -> {
                     Button(onClick = { viewModel.login(context) }) {
                         Text("Iniciar sesión")
                     }
@@ -55,7 +47,7 @@ fun LoginScreen(
                         )
                     }
                 }
-                LoginUiState.SigningIn, LoginUiState.SignedIn -> CircularProgressIndicator()
+                LoginUiState.SigningIn -> CircularProgressIndicator()
             }
         }
     }

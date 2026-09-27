@@ -143,7 +143,7 @@ Offline step 4 (write queue + WorkManager sync + 6-month window) released as 1.2
 2026-09-27 after the backend reached prod.
 Backend fixes made along the way live in `expenses-tracker`.
 
-Open: saving withdrawals UI (`POST /savings/saving-outcome` exists in `SavingsApi`);
+Open: saving withdrawals UI (backend has `POST /savings/saving-outcome`; the app would now write them via sync);
 tapping a Resumen card to see its movements; a 401 from the API shows an error instead of sending the user
 to login; internationalization (user wants it later: UI strings are hard-coded
 Spanish in Kotlin, and money/dates are fixed to COP/es-CO in `ui/format/Formatters.kt`).

@@ -139,6 +139,8 @@ tabs by state and forms are dialogs.
 UI polish (compact header, pinned dialogs, cycle menu limited to the last 24 cycles with "Ver más") →
 signed, R8-shrunk release APK (1.0.0) for sideloading → offline steps 1–3 (Room + /sync), released as 1.1.0
 (versionCode 2) on 2026-09-27 after the backend migration reached prod.
+Offline step 4 (write queue + WorkManager sync + 6-month window) released as 1.2.0 (versionCode 3) on
+2026-09-27 after the backend reached prod.
 Backend fixes made along the way live in `expenses-tracker`.
 
 Open: saving withdrawals UI (`POST /savings/saving-outcome` exists in `SavingsApi`);

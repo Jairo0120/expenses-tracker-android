@@ -32,8 +32,8 @@ android {
         applicationId = "com.jldev.expensestracker.android"
         minSdk = 26
         targetSdk = 37
-        versionCode = 2
-        versionName = "1.1.0"
+        versionCode = 3
+        versionName = "1.2.0"
 
         buildConfigField("String", "AUTH0_AUDIENCE", "\"${prop("auth0.audience")}\"")
         buildConfigField("String", "AUTH0_SCHEME", "\"$authScheme\"")

@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 /** An [EntryListViewModel] whose items belong to the cycle the user picked (the active one by default). */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -37,7 +38,18 @@ abstract class CycleEntryListViewModel<T : Any>(
         .distinctUntilChanged()
         .flatMapLatest { uuid -> if (uuid == null) flowOf(emptyList()) else items(uuid) }
 
-    fun selectCycle(cycleUuid: String) = cycleRepository.select(cycleUuid)
+    /** Cycles older than the sync window aren't on the phone: they're fetched when picked. */
+    fun selectCycle(cycleUuid: String) {
+        cycleRepository.select(cycleUuid)
+        val cycle = cycles.value.firstOrNull { it.uuid == cycleUuid } ?: return
+        if (cycle.startDate.isBefore(SyncRepository.windowStart())) {
+            viewModelScope.launch {
+                userMessages.runReporting("Este ciclo no está guardado en el teléfono") {
+                    syncRepository.loadCycle(cycleUuid)
+                }
+            }
+        }
+    }
 
     /** The cycle new items go to. */
     protected fun cycleForNewItems(): CycleEntity =

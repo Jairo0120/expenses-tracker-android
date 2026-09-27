@@ -1,5 +1,6 @@
 package com.jldev.expensestracker.android.data.local
 
+import androidx.room.AutoMigration
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
@@ -17,8 +18,13 @@ import androidx.room.TypeConverters
         ExpenseEntity::class,
         IncomeEntity::class,
         SavingEntity::class,
+        PendingChangeEntity::class,
     ],
-    version = 1,
+    version = 2,
+    autoMigrations = [
+        // 2: the pending_changes queue for offline writes.
+        AutoMigration(from = 1, to = 2),
+    ],
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
@@ -28,4 +34,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun budgetDao(): BudgetDao
     abstract fun incomeDao(): IncomeDao
     abstract fun savingDao(): SavingDao
+    abstract fun pendingChangeDao(): PendingChangeDao
 }

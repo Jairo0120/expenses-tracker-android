@@ -16,6 +16,7 @@ junit = "4.13.2"
 coroutines = "1.11.0"
 room = "2.8.5"
 datastore = "1.2.1"
+work = "2.12.0"
 robolectric = "4.17"
 androidxTest = "1.7.0"
 mockwebserver = "5.5.0"
@@ -44,6 +45,10 @@ junit = { module = "junit:junit", version.ref = "junit" }
 room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
 room-ktx = { module = "androidx.room:room-ktx", version.ref = "room" }
 room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
+work-runtime = { module = "androidx.work:work-runtime-ktx", version.ref = "work" }
+work-testing = { module = "androidx.work:work-testing", version.ref = "work" }
+androidx-hilt-work = { module = "androidx.hilt:hilt-work", version.ref = "androidxHilt" }
+androidx-hilt-compiler = { module = "androidx.hilt:hilt-compiler", version.ref = "androidxHilt" }
 datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastore" }
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
 androidx-test-core = { module = "androidx.test:core-ktx", version.ref = "androidxTest" }

@@ -36,16 +36,16 @@ class IncomesRepository @Inject constructor(
             description = description, valIncome = amount, dateIncome = date,
             isRecurrentIncome = createRecurrent, cycleUuid = cycleUuid, recurrentIncomeUuid = recurrent?.uuid,
         )
-        sync.push(listOfNotNull(recurrent?.let { SyncTables.recurrentIncomes.change(it) }, SyncTables.incomes.change(income)))
+        sync.save(listOfNotNull(recurrent?.let { SyncTables.recurrentIncomes.save(it) }, SyncTables.incomes.save(income)))
     }
 
     suspend fun update(income: IncomeEntity, description: String, amount: Double) {
         val updated = income.copy(description = description, valIncome = amount, updatedAt = now())
-        sync.push(listOf(SyncTables.incomes.change(updated)))
+        sync.save(listOf(SyncTables.incomes.save(updated)))
     }
 
     suspend fun delete(income: IncomeEntity) {
-        sync.push(listOf(SyncTables.incomes.change(income.copy(updatedAt = now()), deleted = true)))
+        sync.save(listOf(SyncTables.incomes.delete(income.copy(updatedAt = now()))))
     }
 
     fun recurrentIncomes(): Flow<List<RecurrentIncomeEntity>> = incomeDao.recurrentIncomes()
@@ -56,15 +56,15 @@ class IncomesRepository @Inject constructor(
             uuid = newUuid(), createdAt = timestamp, updatedAt = timestamp,
             description = description, valIncome = amount,
         )
-        sync.push(listOf(SyncTables.recurrentIncomes.change(recurrent)))
+        sync.save(listOf(SyncTables.recurrentIncomes.save(recurrent)))
     }
 
     suspend fun updateRecurrent(recurrent: RecurrentIncomeEntity, description: String, amount: Double, enabled: Boolean) {
         val updated = recurrent.copy(description = description, valIncome = amount, enabled = enabled, updatedAt = now())
-        sync.push(listOf(SyncTables.recurrentIncomes.change(updated)))
+        sync.save(listOf(SyncTables.recurrentIncomes.save(updated)))
     }
 
     suspend fun deleteRecurrent(recurrent: RecurrentIncomeEntity) {
-        sync.push(listOf(SyncTables.recurrentIncomes.change(recurrent.copy(updatedAt = now()), deleted = true)))
+        sync.save(listOf(SyncTables.recurrentIncomes.delete(recurrent.copy(updatedAt = now()))))
     }
 }

@@ -8,8 +8,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.DrawerValue
@@ -28,6 +30,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDrawerState
@@ -78,6 +81,23 @@ fun AppShell(viewModel: ShellViewModel = hiltViewModel()) {
     var tab by rememberSaveable { mutableStateOf(Tab.Expenses) }
     val addButtonState = remember { AddButtonState() }
 
+    uiState.unsentChangesOnLogout?.let { count ->
+        AlertDialog(
+            onDismissRequest = viewModel::cancelLogout,
+            title = { Text("Cambios sin enviar") },
+            text = {
+                Text(
+                    "Hay $count ${if (count == 1) "cambio que aún no llega" else "cambios que aún no llegan"} " +
+                        "al servidor. Si cierras sesión ahora, se perderán.",
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { viewModel.logout(context) }) { Text("Cerrar sesión", color = PersianRed.c400) }
+            },
+            dismissButton = { TextButton(onClick = viewModel::cancelLogout) { Text("Cancelar") } },
+        )
+    }
+
     LaunchedEffect(Unit) {
         viewModel.messages.collect { snackbarHostState.showSnackbar(it) }
     }
@@ -109,7 +129,12 @@ fun AppShell(viewModel: ShellViewModel = hiltViewModel()) {
                     title = {
                         Column {
                             Text(tab.section.title)
-                            uiState.status?.let { CycleSummary(it) }
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                uiState.status?.let { CycleSummary(it) }
+                                if (uiState.pendingChanges > 0) {
+                                    PendingChanges(uiState.pendingChanges, Modifier.padding(start = 12.dp))
+                                }
+                            }
                         }
                     },
                     navigationIcon = { MenuButton(drawerState) },
@@ -160,6 +185,25 @@ private fun TabContent(tab: Tab) {
         Tab.SavingsSummary -> SavingsSummaryScreen()
         Tab.Savings -> SavingsScreen()
         Tab.RecurrentSavings -> RecurrentSavingsScreen()
+    }
+}
+
+/** Local changes waiting for a connection to reach the server. */
+@Composable
+private fun PendingChanges(count: Int, modifier: Modifier = Modifier) {
+    Row(modifier, verticalAlignment = Alignment.CenterVertically) {
+        Icon(
+            painterResource(R.drawable.ic_cloud_upload),
+            contentDescription = "Cambios pendientes de enviar",
+            tint = Tailwind.yellow500,
+            modifier = Modifier.size(16.dp),
+        )
+        Text(
+            count.toString(),
+            style = MaterialTheme.typography.labelLarge,
+            color = Tailwind.yellow500,
+            modifier = Modifier.padding(start = 4.dp),
+        )
     }
 }
 

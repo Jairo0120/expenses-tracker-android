@@ -4,7 +4,7 @@ import com.jldev.expensestracker.android.data.local.AppDatabase
 import com.jldev.expensestracker.android.data.local.BudgetEntity
 import com.jldev.expensestracker.android.data.local.CycleEntity
 import com.jldev.expensestracker.android.data.local.RecurrentBudgetEntity
-import com.jldev.expensestracker.android.data.sync.SyncChange
+import com.jldev.expensestracker.android.data.sync.LocalChange
 import com.jldev.expensestracker.android.data.sync.SyncRepository
 import com.jldev.expensestracker.android.data.sync.SyncTables
 import com.jldev.expensestracker.android.data.sync.now
@@ -40,10 +40,10 @@ class BudgetsRepository @Inject constructor(
                 recurrentBudgetUuid = recurrent.uuid,
             )
         }
-        sync.push(
+        sync.save(
             listOfNotNull(
-                SyncTables.recurrentBudgets.change(recurrent),
-                copy?.let { SyncTables.budgets.change(it) },
+                SyncTables.recurrentBudgets.save(recurrent),
+                copy?.let { SyncTables.budgets.save(it) },
             ),
         )
     }
@@ -54,16 +54,16 @@ class BudgetsRepository @Inject constructor(
         val copy = currentCopy(recurrent)?.let {
             it.copy(description = description, valBudget = amount, updatedAt = timestamp)
         }
-        sync.push(listOfNotNull(SyncTables.recurrentBudgets.change(updated), copy?.let { SyncTables.budgets.change(it) }))
+        sync.save(listOfNotNull(SyncTables.recurrentBudgets.save(updated), copy?.let { SyncTables.budgets.save(it) }))
     }
 
     suspend fun deleteRecurrent(recurrent: RecurrentBudgetEntity) {
         val timestamp = now()
-        val changes = mutableListOf<SyncChange>(
-            SyncTables.recurrentBudgets.change(recurrent.copy(updatedAt = timestamp), deleted = true),
+        val changes = mutableListOf<LocalChange>(
+            SyncTables.recurrentBudgets.delete(recurrent.copy(updatedAt = timestamp)),
         )
-        currentCopy(recurrent)?.let { changes += SyncTables.budgets.change(it.copy(updatedAt = timestamp), deleted = true) }
-        sync.push(changes)
+        currentCopy(recurrent)?.let { changes += SyncTables.budgets.delete(it.copy(updatedAt = timestamp)) }
+        sync.save(changes)
     }
 
     private suspend fun currentCopy(recurrent: RecurrentBudgetEntity): BudgetEntity? {

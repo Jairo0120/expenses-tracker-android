@@ -39,6 +39,66 @@ interface SyncDao {
     @Query("DELETE FROM expenses WHERE uuid IN (:uuids)") suspend fun deleteExpenses(uuids: List<String>)
     @Query("DELETE FROM incomes WHERE uuid IN (:uuids)") suspend fun deleteIncomes(uuids: List<String>)
     @Query("DELETE FROM savings WHERE uuid IN (:uuids)") suspend fun deleteSavings(uuids: List<String>)
+
+    /** The server deletes a budget's link from its expenses; do the same locally right away. */
+    @Query("UPDATE expenses SET budgetUuid = NULL WHERE budgetUuid IN (:budgetUuids)")
+    suspend fun unlinkBudgets(budgetUuids: List<String>)
+
+    // After the server merges one of our records into another, point every reference at the survivor.
+    @Query("UPDATE budgets SET cycleUuid = :new WHERE cycleUuid = :old")
+    suspend fun repointBudgetCycles(old: String, new: String)
+    @Query("UPDATE expenses SET cycleUuid = :new WHERE cycleUuid = :old")
+    suspend fun repointExpenseCycles(old: String, new: String)
+    @Query("UPDATE incomes SET cycleUuid = :new WHERE cycleUuid = :old")
+    suspend fun repointIncomeCycles(old: String, new: String)
+    @Query("UPDATE savings SET cycleUuid = :new WHERE cycleUuid = :old")
+    suspend fun repointSavingCycles(old: String, new: String)
+    @Query("UPDATE expenses SET budgetUuid = :new WHERE budgetUuid = :old")
+    suspend fun repointExpenseBudgets(old: String, new: String)
+    @Query("UPDATE savings SET savingTypeUuid = :new WHERE savingTypeUuid = :old")
+    suspend fun repointSavingTypes(old: String, new: String)
+    @Query("UPDATE recurrent_savings SET savingTypeUuid = :new WHERE savingTypeUuid = :old")
+    suspend fun repointRecurrentSavingTypes(old: String, new: String)
+    @Query("UPDATE budgets SET recurrentBudgetUuid = :new WHERE recurrentBudgetUuid = :old")
+    suspend fun repointRecurrentBudgets(old: String, new: String)
+    @Query("UPDATE expenses SET recurrentExpenseUuid = :new WHERE recurrentExpenseUuid = :old")
+    suspend fun repointRecurrentExpenses(old: String, new: String)
+    @Query("UPDATE incomes SET recurrentIncomeUuid = :new WHERE recurrentIncomeUuid = :old")
+    suspend fun repointRecurrentIncomes(old: String, new: String)
+    @Query("UPDATE savings SET recurrentSavingUuid = :new WHERE recurrentSavingUuid = :old")
+    suspend fun repointRecurrentSavings(old: String, new: String)
+
+    /** Every reference to [old], in any table, becomes [new] (uuids are unique across tables). */
+    suspend fun repoint(old: String, new: String) {
+        repointBudgetCycles(old, new)
+        repointExpenseCycles(old, new)
+        repointIncomeCycles(old, new)
+        repointSavingCycles(old, new)
+        repointExpenseBudgets(old, new)
+        repointSavingTypes(old, new)
+        repointRecurrentSavingTypes(old, new)
+        repointRecurrentBudgets(old, new)
+        repointRecurrentExpenses(old, new)
+        repointRecurrentIncomes(old, new)
+        repointRecurrentSavings(old, new)
+    }
+
+    // The 6-month window: older cycles' budgets, expenses and incomes don't stay on the phone.
+    @Query(
+        """DELETE FROM budgets WHERE cycleUuid IN (SELECT uuid FROM cycles WHERE startDate < :windowStart)
+            AND uuid NOT IN (SELECT uuid FROM pending_changes)""",
+    )
+    suspend fun pruneBudgets(windowStart: String)
+    @Query(
+        """DELETE FROM expenses WHERE cycleUuid IN (SELECT uuid FROM cycles WHERE startDate < :windowStart)
+            AND uuid NOT IN (SELECT uuid FROM pending_changes)""",
+    )
+    suspend fun pruneExpenses(windowStart: String)
+    @Query(
+        """DELETE FROM incomes WHERE cycleUuid IN (SELECT uuid FROM cycles WHERE startDate < :windowStart)
+            AND uuid NOT IN (SELECT uuid FROM pending_changes)""",
+    )
+    suspend fun pruneIncomes(windowStart: String)
 }
 
 @Dao
@@ -163,6 +223,9 @@ interface SavingDao {
         """,
     )
     fun recurrentSavings(): Flow<List<RecurrentSavingItem>>
+
+    @Query("SELECT * FROM saving_types WHERE uuid = :uuid")
+    suspend fun savingType(uuid: String): SavingTypeEntity?
 
     @Query("SELECT * FROM saving_types WHERE description = :description LIMIT 1")
     suspend fun savingTypeNamed(description: String): SavingTypeEntity?

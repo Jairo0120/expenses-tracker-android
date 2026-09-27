@@ -64,10 +64,10 @@ class ExpensesRepository @Inject constructor(
             isRecurrentExpense = createRecurrent, cycleUuid = cycleUuid, budgetUuid = budgetUuid,
             recurrentExpenseUuid = recurrent?.uuid,
         )
-        sync.push(
+        sync.save(
             listOfNotNull(
-                recurrent?.let { SyncTables.recurrentExpenses.change(it) },
-                SyncTables.expenses.change(expense),
+                recurrent?.let { SyncTables.recurrentExpenses.save(it) },
+                SyncTables.expenses.save(expense),
             ),
         )
     }
@@ -77,11 +77,11 @@ class ExpensesRepository @Inject constructor(
         val updated = expense.copy(
             description = description, valExpense = amount, budgetUuid = budgetUuid, updatedAt = now(),
         )
-        sync.push(listOf(SyncTables.expenses.change(updated)))
+        sync.save(listOf(SyncTables.expenses.save(updated)))
     }
 
     suspend fun delete(expense: ExpenseEntity) {
-        sync.push(listOf(SyncTables.expenses.change(expense.copy(updatedAt = now()), deleted = true)))
+        sync.save(listOf(SyncTables.expenses.delete(expense.copy(updatedAt = now()))))
     }
 
     fun recurrentExpenses(): Flow<List<RecurrentExpenseEntity>> = expenseDao.recurrentExpenses()
@@ -92,16 +92,16 @@ class ExpensesRepository @Inject constructor(
             uuid = newUuid(), createdAt = timestamp, updatedAt = timestamp,
             description = description, valExpense = amount,
         )
-        sync.push(listOf(SyncTables.recurrentExpenses.change(recurrent)))
+        sync.save(listOf(SyncTables.recurrentExpenses.save(recurrent)))
     }
 
     suspend fun updateRecurrent(recurrent: RecurrentExpenseEntity, description: String, amount: Double, enabled: Boolean) {
         val updated = recurrent.copy(description = description, valExpense = amount, enabled = enabled, updatedAt = now())
-        sync.push(listOf(SyncTables.recurrentExpenses.change(updated)))
+        sync.save(listOf(SyncTables.recurrentExpenses.save(updated)))
     }
 
     suspend fun deleteRecurrent(recurrent: RecurrentExpenseEntity) {
-        sync.push(listOf(SyncTables.recurrentExpenses.change(recurrent.copy(updatedAt = now()), deleted = true)))
+        sync.save(listOf(SyncTables.recurrentExpenses.delete(recurrent.copy(updatedAt = now()))))
     }
 }
 

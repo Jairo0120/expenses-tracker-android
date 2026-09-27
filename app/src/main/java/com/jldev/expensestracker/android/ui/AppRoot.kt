@@ -15,6 +15,7 @@ import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import com.jldev.expensestracker.android.auth.AuthRepository
 import com.jldev.expensestracker.android.data.CycleRepository
 import com.jldev.expensestracker.android.data.sync.SyncRepository
+import com.jldev.expensestracker.android.data.sync.SyncScheduler
 import com.jldev.expensestracker.android.ui.login.LoginScreen
 import com.jldev.expensestracker.android.ui.shell.AppShell
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -26,6 +27,7 @@ class AppViewModel @Inject constructor(
     authRepository: AuthRepository,
     cycleRepository: CycleRepository,
     syncRepository: SyncRepository,
+    syncScheduler: SyncScheduler,
 ) : ViewModel() {
     val isSignedIn = authRepository.isSignedIn
 
@@ -43,6 +45,7 @@ class AppViewModel @Inject constructor(
                     sessionViewModelStore.clear()
                     sessionViewModelStore = ViewModelStore()
                     // The next user must not see this one's data.
+                    syncScheduler.stop()
                     cycleRepository.reset()
                     syncRepository.clear()
                 }

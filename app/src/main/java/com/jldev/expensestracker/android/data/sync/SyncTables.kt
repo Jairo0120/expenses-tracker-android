@@ -20,6 +20,12 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import java.time.Instant
 
+/** A change made on the phone: applied to the local database at once, and queued for the server. */
+class LocalChange internal constructor(
+    val change: SyncChange,
+    internal val applyLocally: suspend (SyncDao) -> Unit,
+)
+
 /** A synced table: its name on the wire and how to store its records locally. */
 class SyncTable<T : SyncRecord>(
     val name: String,
@@ -28,19 +34,33 @@ class SyncTable<T : SyncRecord>(
     private val delete: suspend SyncDao.(List<String>) -> Unit,
     /** Fields the server sends but doesn't accept in a push. */
     private val readOnly: Set<String> = emptySet(),
+    /** What the server also does when one of these records is deleted. */
+    private val onDelete: suspend SyncDao.(List<String>) -> Unit = {},
 ) {
-    /** Stores pulled or pushed-back records: upserts live ones, removes deleted ones. */
-    suspend fun store(dao: SyncDao, records: List<JsonElement>) {
-        val decoded = records.map { ApiJson.decodeFromJsonElement(serializer, it) }
+    /**
+     * Stores records from the server: upserts live ones, removes deleted ones. Records in [skip] (ones
+     * with local changes still queued) are left alone; the server's copy comes again after the push.
+     */
+    suspend fun store(dao: SyncDao, records: List<JsonElement>, skip: Set<String> = emptySet()) {
+        val decoded = records.map { ApiJson.decodeFromJsonElement(serializer, it) }.filter { it.uuid !in skip }
         val (deleted, live) = decoded.partition { it.deletedAt != null }
         if (live.isNotEmpty()) dao.upsert(live)
-        if (deleted.isNotEmpty()) dao.delete(deleted.map { it.uuid })
+        if (deleted.isNotEmpty()) remove(dao, deleted.map { it.uuid })
     }
 
-    suspend fun remove(dao: SyncDao, uuids: List<String>) = dao.delete(uuids)
+    suspend fun remove(dao: SyncDao, uuids: List<String>) {
+        dao.delete(uuids)
+        dao.onDelete(uuids)
+    }
+
+    /** Creating or editing [record]: its `updatedAt` must be when the change was made. */
+    fun save(record: T) = LocalChange(change(record)) { dao -> dao.upsert(listOf(record)) }
+
+    /** Deleting [record]: its `updatedAt` must be when it was deleted. */
+    fun delete(record: T) = LocalChange(change(record, deleted = true)) { dao -> remove(dao, listOf(record.uuid)) }
 
     /** A push of [record] as it is now (the whole record, so nulls clear fields on the server). */
-    fun change(record: T, deleted: Boolean = false): SyncChange = SyncChange(
+    internal fun change(record: T, deleted: Boolean = false): SyncChange = SyncChange(
         entity = name,
         uuid = record.uuid,
         updatedAt = record.updatedAt,
@@ -88,7 +108,10 @@ object SyncTables {
         "recurrent_savings", RecurrentSavingEntity.serializer(),
         SyncDao::upsertRecurrentSavings, SyncDao::deleteRecurrentSavings,
     )
-    val budgets = SyncTable("budgets", BudgetEntity.serializer(), SyncDao::upsertBudgets, SyncDao::deleteBudgets)
+    val budgets = SyncTable(
+        "budgets", BudgetEntity.serializer(), SyncDao::upsertBudgets, SyncDao::deleteBudgets,
+        onDelete = SyncDao::unlinkBudgets,
+    )
     val expenses = SyncTable("expenses", ExpenseEntity.serializer(), SyncDao::upsertExpenses, SyncDao::deleteExpenses)
     val incomes = SyncTable("incomes", IncomeEntity.serializer(), SyncDao::upsertIncomes, SyncDao::deleteIncomes)
     val savings = SyncTable("savings", SavingEntity.serializer(), SyncDao::upsertSavings, SyncDao::deleteSavings)

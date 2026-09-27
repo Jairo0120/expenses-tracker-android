@@ -51,8 +51,13 @@ tabs by state and forms are dialogs.
   (including the summary queries that mirror the backend SQL), `AppDatabase`. Schemas exported to
   `app/schemas/` (bump the version and add a migration when entities change).
 - `data/model/` — what screens show: `ExpenseItem`, `BudgetTotal` (+ `UNBUDGETED`), `CycleStatus`, `GroupedSaving`…
-- `data/sync/` — `SyncApi` (GET/POST /sync), `SyncTables` (wire name ↔ DAO per table, push encoding),
-  `SyncStore` (cursor in DataStore), `SyncRepository` (pull all pages, push + store results + pull, clear).
+- `data/sync/` — `SyncApi` (GET/POST /sync, GET /sync/cycles/{uuid}), `SyncTables` (wire name ↔ DAO per table;
+  `save`/`delete` build a `LocalChange`), `SyncStore` (cursor in DataStore), `SyncRepository` (`save` = apply
+  locally + queue; `sync` = push the queue in order, then pull within the window; `loadCycle`; `clear`),
+  `SyncWorker` + `WorkManagerSyncScheduler` (sync soon after changes and when the connection returns,
+  every 30 min while signed in; stopped on logout).
+- `data/local/PendingChange.kt` — the offline queue (`pending_changes`): every change carries the whole record
+  and they're never merged, so pushing in order is always safe.
 - `data/*Repository` — per area: read Flows from Room, and turn user actions into sync pushes, including the
   side effects the old REST endpoints did server-side (e.g. a recurrent budget also creates/edits/deletes the
   active cycle's copy; saving types are found or created by capitalized name). `CycleRepository` — cycles,
@@ -76,9 +81,17 @@ tabs by state and forms are dialogs.
   `Z`). Cycle dates are `LocalDate`. Always send `date_*` on create.
 - `ApiJson`: snake_case naming, `explicitNulls = false` (Kotlin nulls are omitted). To send a real JSON null,
   use a `JsonElement` field — see `ExpenseUpdate.budgetId` / `budgetChange()` (clearing an expense's budget).
-- Screens read only from Room; everything is keyed by uuid (no server integer ids on the phone). Writes are
-  pushes through `SyncRepository.push` (for now online: step 4 adds the offline queue); the server's copies
-  are stored and a pull follows, so Room Flows update the screens. Logout clears the database and cursor.
+- Screens read only from Room; everything is keyed by uuid (no server integer ids on the phone). Writes go
+  through `SyncRepository.save`: applied to Room at once (works offline) and queued; WorkManager pushes the
+  queue when there's a connection. A pull never overwrites a record with queued changes. Push results:
+  merged → local references (and queued changes) are repointed to the server's uuid; rejected → the local
+  record is restored to the server's copy, or removed if the server has none, and the shell shows a message.
+  Logout asks first when changes are still queued (logging out clears the database, queue and cursor).
+- Sync window: pulls keep the last 6 monthly cycles of budgets/expenses/incomes (`SyncRepository.windowStart`);
+  older ones are pruned on the first sync of each process and fetched on demand when picked
+  (`CycleEntryListViewModel.selectCycle` → `loadCycle`). Savings and cycles are always complete.
+- Room schema changes: bump the version and add a migration (`AutoMigration` when Room can infer it; 1→2
+  added `pending_changes`). Released versions have user data on the phone.
 - `BudgetTotal.UNBUDGETED` is the synthetic "Sin ppto." entry: a list filter only, never offered in the form.
 - A new list screen: subclass `EntryListViewModel` (or `CycleEntryListViewModel`) and implement `items()`;
   `uiState` is lazy because subclasses aren't constructed yet during the base init. Mutations go through
@@ -113,7 +126,8 @@ tabs by state and forms are dialogs.
   when online. Keep **all** savings locally: "Totalizado" sums every saving ever recorded.
 - Order: (1) backend Alembic + sync columns/data migration, (2) backend `/sync`, (3) Room + repositories, screens
   reading from Room, writes pushed online — all done 2026-09-26 — (4) offline write queue + WorkManager sync +
-  6-month window with older cycles on demand, (5) offline-only mode + upload on account creation.
+  6-month window with older cycles on demand — done 2026-09-27 — (5) offline-only mode + upload on account
+  creation.
 - Pull pages are in version order, not dependency order: a record may reference one that arrives in a later
   page, so Room tables should reference by uuid without enforced foreign keys (or resolve after a full pull).
 - Summaries (cycle status, budget totals, "Sin ppto.", grouped savings) must be computed locally, matching
